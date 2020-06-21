@@ -1,6 +1,6 @@
 /*
  * SkyWatch.h
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,13 @@
 #ifndef SKYWATCH_H
 #define SKYWATCH_H
 
-#define SKYWATCH_FIRMWARE_VERSION  "0.9"
+#if defined(ARDUINO)
+#include <Arduino.h>
+#endif /* ARDUINO */
+
+#define SKYWATCH_FIRMWARE_VERSION  "1.0-rc7"
+#define SKYWATCH_IDENT    "SkyWatch"
+#define SOFTRF_IDENT      "SoftRF"
 
 #define DEFAULT_AP_SSID   "SoftRF-abc123"
 #define DEFAULT_AP_PSK    "12345678"
@@ -51,6 +57,14 @@
 
 #define RELAY_DST_PORT    12390
 #define RELAY_SRC_PORT    (RELAY_DST_PORT - 1)
+
+/* S76G (STM32) AN3155 BR & BITS */
+#define SERIAL_IN_BR      115200
+#define SERIAL_IN_BITS    SERIAL_8E1
+
+/* SoftRF serial output defaults */
+#define SERIAL_OUT_BR     38400
+#define SERIAL_OUT_BITS   SERIAL_8N1
 
 #define DATA_TIMEOUT      2000 /* 2.0 seconds */
 
@@ -105,7 +119,7 @@ typedef struct hardware_info {
     byte  gnss;
     byte  baro;
     byte  display;
-
+    byte  storage;
 } hardware_info_t;
 
 enum
@@ -118,13 +132,20 @@ enum
 	SOFTRF_MODEL_UAT,
 	SOFTRF_MODEL_SKYVIEW,
 	SOFTRF_MODEL_RETRO,
-	SOFTRF_MODEL_SKYWATCH
+	SOFTRF_MODEL_SKYWATCH,
+	SOFTRF_MODEL_DONGLE,
+	SOFTRF_MODEL_MULTI,
+	SOFTRF_MODEL_UNI,
+	SOFTRF_MODEL_WEBTOP
 };
 
 enum
 {
 	HW_REV_UNKNOWN,
-	HW_REV_T_WATCH
+	HW_REV_T_WATCH_19,
+	HW_REV_T_WATCH_20,
+	HW_REV_DEVKIT,
+	HW_REV_T8
 };
 
 enum
@@ -161,7 +182,8 @@ enum
 enum
 {
 	CON_NONE,
-	CON_SERIAL,
+	CON_SERIAL_MAIN,
+	CON_SERIAL_AUX,
 	CON_WIFI_UDP,
 	CON_WIFI_TCP,
 	CON_BLUETOOTH
@@ -198,18 +220,11 @@ enum
 
 enum
 {
+	VIEW_MODE_STATUS,
 	VIEW_MODE_RADAR,
-	VIEW_MODE_TABLE,
-	VIEW_MODE_TEXT
+	VIEW_MODE_TEXT,
+	VIEW_MODE_TIME
 };
-
-#if 0
-enum
-{
-	DIRECTION_TRACK_UP,
-	DIRECTION_NORTH_UP
-};
-#endif
 
 /*
  * 'Radar view' scale factor (outer circle diameter)
@@ -256,6 +271,12 @@ enum
 	ANTI_GHOSTING_2MIN,
 	ANTI_GHOSTING_5MIN,
 	ANTI_GHOSTING_10MIN
+};
+
+enum
+{
+	STORAGE_NONE,
+	STORAGE_uSD
 };
 
 enum
@@ -356,6 +377,7 @@ enum
 
 extern ufo_t ThisDevice;
 extern hardware_info_t hw_info;
+extern bool inServiceMode;
 
 extern void shutdown(const char *);
 

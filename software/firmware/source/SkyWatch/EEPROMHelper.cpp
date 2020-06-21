@@ -1,6 +1,6 @@
 /*
  * EEPROMHelper.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
 #include <protocol.h>
 #include <freqplan.h>
 
-#include "SkyWatch.h"
-
 // start reading from the first byte (address 0) of the EEPROM
 
 eeprom_t eeprom_block;
@@ -39,6 +37,7 @@ void EEPROM_setup()
     Serial.print(F("ERROR: Failed to initialize "));
     Serial.print(sizeof(eeprom_t));
     Serial.println(F(" bytes of EEPROM!"));
+    Serial.flush();
     delay(1000000);
   }
 
@@ -47,7 +46,7 @@ void EEPROM_setup()
   }
 
   if (eeprom_block.field.magic != SKYWATCH_EEPROM_MAGIC) {
-    Serial.println(F("Warning! EEPROM magic mismatch! Loading defaults..."));
+    Serial.println(F("WARNING! User defined settings are not initialized yet. Loading defaults..."));
 
     EEPROM_defaults();
   } else {
@@ -55,7 +54,7 @@ void EEPROM_setup()
     Serial.println(eeprom_block.field.version);
 
     if (eeprom_block.field.version != SKYWATCH_EEPROM_VERSION) {
-      Serial.println(F("Warning! EEPROM version mismatch! Loading defaults..."));
+      Serial.println(F("WARNING! Version mismatch of user defined settings. Loading defaults..."));
 
       EEPROM_defaults();
     }
@@ -93,8 +92,12 @@ void EEPROM_defaults()
   /* SkyView defaults */
   eeprom_block.field.settings.m.adapter         = ADAPTER_NONE;
 
-  eeprom_block.field.settings.m.connection      = CON_SERIAL;
-  eeprom_block.field.settings.m.baudrate        = B38400;
+  eeprom_block.field.settings.m.connection      = CON_SERIAL_MAIN;
+  if (hw_info.model == SOFTRF_MODEL_SKYWATCH) {
+    eeprom_block.field.settings.m.baudrate      = B115200; /* S76G AN3155 BR */
+  } else {
+    eeprom_block.field.settings.m.baudrate      = B38400;
+  }
   eeprom_block.field.settings.m.protocol        = PROTOCOL_NMEA;
   eeprom_block.field.settings.m.orientation     = DIRECTION_NORTH_UP;
 
@@ -107,7 +110,7 @@ void EEPROM_defaults()
   strcpy(eeprom_block.field.settings.m.bt_key,    DEFAULT_BT_KEY);
 
   eeprom_block.field.settings.m.units           = UNITS_METRIC;
-  eeprom_block.field.settings.m.vmode           = VIEW_MODE_RADAR;
+  eeprom_block.field.settings.m.vmode           = VIEW_MODE_STATUS;
   eeprom_block.field.settings.m.zoom            = ZOOM_MEDIUM;
   eeprom_block.field.settings.m.adb             = DB_AUTO;
   eeprom_block.field.settings.m.idpref          = ID_REG;

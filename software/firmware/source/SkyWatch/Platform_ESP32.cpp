@@ -1,6 +1,6 @@
 /*
  * Platform_ESP32.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <rom/spi_flash.h>
 #include <flashchips.h>
 #include <axp20x.h>
-#include <pcf8563.h>
 
 #include "SoCHelper.h"
 #include "EEPROMHelper.h"
@@ -32,13 +31,11 @@
 #include "BluetoothHelper.h"
 #include "BatteryHelper.h"
 
-#include "SkyWatch.h"
-
 #include <battery.h>
 #include <sqlite3.h>
 #include <SD.h>
 
-#include "driver/i2s.h"
+//#include "driver/i2s.h"
 
 #include <esp_wifi.h>
 #include <esp_bt.h>
@@ -49,7 +46,9 @@
 WebServer server ( 80 );
 
 AXP20X_Class  axp;
-PCF8563_Class rtc;
+PCF8563_Class *rtc = nullptr;
+BMA           *bma = nullptr;
+I2CBus        *i2c = nullptr;
 
 static union {
   uint8_t efuse_mac[6];
@@ -62,6 +61,7 @@ static sqlite3 *icao_db;
 
 SPIClass SPI1(HSPI);
 
+#if 0
 /* variables hold file, state of process wav file and wav file properties */
 wavProperties_t wavProps;
 
@@ -84,10 +84,13 @@ i2s_pin_config_t pin_config = {
     .data_out_num = SOC_GPIO_PIN_DOUT,
     .data_in_num  = -1  // Not used
 };
+#endif
 
 RTC_DATA_ATTR int bootCount   = 0;
 static portMUX_TYPE PMU_mutex = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE BMA_mutex = portMUX_INITIALIZER_UNLOCKED;
 volatile bool PMU_Irq         = false;
+volatile bool BMA_Irq         = false;
 
 static void IRAM_ATTR ESP32_PMU_Interrupt_handler() {
   portENTER_CRITICAL_ISR(&PMU_mutex);
@@ -95,9 +98,27 @@ static void IRAM_ATTR ESP32_PMU_Interrupt_handler() {
   portEXIT_CRITICAL_ISR(&PMU_mutex);
 }
 
+static void IRAM_ATTR ESP32_BMA_Interrupt_handler() {
+  portENTER_CRITICAL_ISR(&BMA_mutex);
+  BMA_Irq = true;
+  portEXIT_CRITICAL_ISR(&BMA_mutex);
+}
+
 static uint32_t ESP32_getFlashId()
 {
   return g_rom_flashchip.device_id;
+}
+
+static uint8_t ESP32_I2C_readBytes(uint8_t devAddress, uint8_t regAddress, uint8_t *data, uint8_t len)
+{
+    if (!i2c) return 0xFF;
+    return i2c->readBytes(devAddress, regAddress, data, len);
+}
+
+static uint8_t ESP32_I2C_writeBytes(uint8_t devAddress, uint8_t regAddress, uint8_t *data, uint8_t len)
+{
+    if (!i2c) return 0xFF;
+    return i2c->writeBytes(devAddress, regAddress, data, len);
 }
 
 static void ESP32_setup()
@@ -142,20 +163,26 @@ static void ESP32_setup()
     {
     case MakeFlashId(WINBOND_NEX_ID, WINBOND_NEX_W25Q128_V):
       hw_info.model = SOFTRF_MODEL_SKYWATCH;
-      hw_info.revision = HW_REV_T_WATCH;
+      hw_info.revision = HW_REV_T_WATCH_19;
+      break;
+    case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25LQ32):
+      hw_info.model = SOFTRF_MODEL_WEBTOP;
+      hw_info.revision = HW_REV_T8;
       break;
     default:
+      hw_info.model = SOFTRF_MODEL_WEBTOP;
       hw_info.revision = HW_REV_UNKNOWN;
       break;
     }
   } else {
     switch(flash_id)
     {
-    /* workaround for AC 1.0.1 */
-    case MakeFlashId(WINBOND_NEX_ID, WINBOND_NEX_W25Q128_V):
-      hw_info.model = SOFTRF_MODEL_SKYWATCH;
-      hw_info.revision = HW_REV_T_WATCH;
+    case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25Q32):
+      hw_info.model = SOFTRF_MODEL_WEBTOP;
+      hw_info.revision = HW_REV_DEVKIT;
       break;
+    default:
+      hw_info.model = SOFTRF_MODEL_WEBTOP;
       hw_info.revision = HW_REV_UNKNOWN;
       break;
     }
@@ -163,14 +190,28 @@ static void ESP32_setup()
 
   if (hw_info.model == SOFTRF_MODEL_SKYWATCH) {
 
+    bool axp_present = false;
+    bool bma_present = false;
+    bool rtc_present = false;
+
     Wire1.begin(SOC_GPIO_PIN_TWATCH_SEN_SDA , SOC_GPIO_PIN_TWATCH_SEN_SCL);
     Wire1.beginTransmission(AXP202_SLAVE_ADDRESS);
-    if (Wire1.endTransmission() == 0) {
+    axp_present = (Wire1.endTransmission() == 0);
 
-      axp.begin(Wire1, AXP202_SLAVE_ADDRESS);
+    Wire1.beginTransmission(BMA4_I2C_ADDR_SECONDARY);
+    bma_present = (Wire1.endTransmission() == 0);
+
+    Wire1.beginTransmission(PCF8563_SLAVE_ADDRESS);
+    rtc_present = (Wire1.endTransmission() == 0);
+
+    i2c = new I2CBus(Wire1, SOC_GPIO_PIN_TWATCH_SEN_SDA, SOC_GPIO_PIN_TWATCH_SEN_SCL);
+
+    if (axp_present && (i2c != nullptr)) {
+      axp.begin(ESP32_I2C_readBytes, ESP32_I2C_writeBytes, AXP202_SLAVE_ADDRESS);
 
       axp.enableIRQ(AXP202_ALL_IRQ, AXP202_OFF);
       axp.adc1Enable(0xFF, AXP202_OFF);
+      axp.adc2Enable(0xFF, AXP202_OFF);
 
       axp.setChgLEDMode(AXP20X_LED_LOW_LEVEL);
 
@@ -184,12 +225,28 @@ static void ESP32_setup()
       attachInterrupt(digitalPinToInterrupt(SOC_GPIO_PIN_TWATCH_PMU_IRQ),
                       ESP32_PMU_Interrupt_handler, FALLING);
 
+#if DEBUG_POWER
+      axp.adc1Enable(AXP202_BATT_VOL_ADC1 | AXP202_BATT_CUR_ADC1 |
+                     AXP202_VBUS_VOL_ADC1 | AXP202_VBUS_CUR_ADC1, AXP202_ON);
+#else
       axp.adc1Enable(AXP202_BATT_VOL_ADC1, AXP202_ON);
+#endif
+
       axp.enableIRQ(AXP202_PEK_LONGPRESS_IRQ | AXP202_PEK_SHORTPRESS_IRQ, true);
       axp.clearIRQ();
     }
 
-    rtc.begin(Wire1);
+    if (bma_present && (i2c != nullptr)) {
+      bma = new BMA(*i2c);
+
+      pinMode(SOC_GPIO_PIN_TWATCH_BMA_IRQ, INPUT);
+      attachInterrupt(digitalPinToInterrupt(SOC_GPIO_PIN_TWATCH_BMA_IRQ),
+                      ESP32_BMA_Interrupt_handler, RISING);
+    }
+
+    if (rtc_present && (i2c != nullptr)) {
+      rtc = new PCF8563_Class(*i2c);
+    }
   }
 
   /* SD-SPI init */
@@ -262,7 +319,9 @@ static void ESP32_fini()
     axp.setChgLEDMode(AXP20X_LED_OFF);
 
     axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF); // BL
+#if !defined(EB_S76G_1_3)
     axp.setPowerOutPut(AXP202_LDO4, AXP202_OFF); // S76G (Sony GNSS)
+#endif
     axp.setPowerOutPut(AXP202_LDO3, AXP202_OFF); // S76G (MCU + LoRa)
 
     delay(20);
@@ -279,6 +338,13 @@ static void ESP32_fini()
 static void ESP32_reset()
 {
   ESP.restart();
+}
+
+static void ESP32_sleep_ms(int ms)
+{
+  esp_sleep_enable_timer_wakeup(ms * 1000);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH,ESP_PD_OPTION_ON);
+  esp_light_sleep_start();
 }
 
 static uint32_t ESP32_getChipId()
@@ -339,7 +405,6 @@ static void ESP32_WiFiUDP_stopAll()
 /* not implemented yet */
 }
 
-
 static IPAddress ESP32_WiFi_get_broadcast()
 {
   tcpip_adapter_ip_info_t info;
@@ -397,9 +462,37 @@ static size_t ESP32_WiFi_Receive_UDP(uint8_t *buf, size_t max_size)
   return 0; // WiFi_Receive_UDP(buf, max_size);
 }
 
+static int ESP32_WiFi_clients_count()
+{
+  WiFiMode_t mode = WiFi.getMode();
+
+  switch (mode)
+  {
+  case WIFI_AP:
+    wifi_sta_list_t stations;
+    ESP_ERROR_CHECK(esp_wifi_ap_get_sta_list(&stations));
+
+    tcpip_adapter_sta_list_t infoList;
+    ESP_ERROR_CHECK(tcpip_adapter_get_sta_list(&stations, &infoList));
+
+    return infoList.num;
+  case WIFI_STA:
+  default:
+    return -1; /* error */
+  }
+}
+
 static void ESP32_swSer_begin(unsigned long baud)
 {
-  SerialInput.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_GNSS_RX, SOC_GPIO_PIN_GNSS_TX);
+  if (settings->m.connection == CON_SERIAL_MAIN) {
+    SerialInput.begin(
+        baud,
+        hw_info.model == SOFTRF_MODEL_SKYWATCH ? SERIAL_IN_BITS : SERIAL_8N1,
+        SOC_GPIO_PIN_GNSS_RX,
+        SOC_GPIO_PIN_GNSS_TX);
+  } else {
+    Serial.updateBaudRate(baud);
+  }
 }
 
 static void ESP32_swSer_enableRx(boolean arg)
@@ -593,6 +686,7 @@ static void ESP32_DB_fini()
     SD.end();
 }
 
+#if 0
 /* write sample data to I2S */
 int i2s_write_sample_nb(uint32_t sample)
 {
@@ -644,16 +738,6 @@ static void play_file(char *filename)
         n = readProps(wavfile, &wavProps);
         if(n == sizeof(wavProperties_t)){
           state = HEADER_DATA;
-#if 0
-            Serial.print("chunkID = "); Serial.println(wavProps.chunkID);
-            Serial.print("chunkSize = "); Serial.println(wavProps.chunkSize);
-            Serial.print("audioFormat = "); Serial.println(wavProps.audioFormat);
-            Serial.print("numChannels = "); Serial.println(wavProps.numChannels);
-            Serial.print("sampleRate = "); Serial.println(wavProps.sampleRate);
-            Serial.print("byteRate = "); Serial.println(wavProps.byteRate);
-            Serial.print("blockAlign = "); Serial.println(wavProps.blockAlign);
-            Serial.print("bitsPerSample = "); Serial.println(wavProps.bitsPerSample);
-#endif
         }
         break;
         case HEADER_DATA:
@@ -749,6 +833,7 @@ static void play_memory(const unsigned char *data, int size)
 }
 
 #include "Melody.h"
+#endif
 
 static void ESP32_TTS(char *message)
 {
@@ -899,6 +984,36 @@ static void ESP32_WDT_fini()
   disableLoopWDT();
 }
 
+static void ESP32_Service_Mode(boolean arg)
+{
+  if (arg) {
+//    Serial.begin(SERIAL_IN_BR, SERIAL_IN_BITS);
+     Serial.updateBaudRate(SERIAL_IN_BR);
+  WiFi_fini();
+    axp.setGPIOMode(AXP_GPIO_2, AXP_IO_OUTPUT_LOW_MODE);  // MCU_reset
+    delay(10);
+    axp.setGPIOMode(AXP_GPIO_1, AXP_IO_OUTPUT_HIGH_MODE); // BOOT0 high
+    delay(100);
+    axp.setGPIOMode(AXP_GPIO_2, AXP_IO_FLOATING_MODE);    // release MCU_reset (it has pull-up)
+    delay(500);
+    axp.setGPIOMode(AXP_GPIO_1, AXP_IO_FLOATING_MODE);    // release BOOT0 (it has pull-down)
+
+    inServiceMode = true;
+  } else {
+//    Serial.begin(SERIAL_OUT_BR, SERIAL_OUT_BITS);
+    Serial.updateBaudRate(SERIAL_OUT_BR);
+    axp.setGPIOMode(AXP_GPIO_2, AXP_IO_OUTPUT_LOW_MODE);  // MCU_reset
+    delay(10);
+    axp.setGPIOMode(AXP_GPIO_1, AXP_IO_OUTPUT_LOW_MODE);  // BOOT0 low
+    delay(100);
+    axp.setGPIOMode(AXP_GPIO_2, AXP_IO_FLOATING_MODE);    // release MCU_reset (it has pull-up)
+    delay(500);
+    axp.setGPIOMode(AXP_GPIO_1, AXP_IO_FLOATING_MODE);    // release BOOT0 (it has pull-down)
+
+    inServiceMode = false;
+  }
+}
+
 const SoC_ops_t ESP32_ops = {
   SOC_ESP32,
   "ESP32",
@@ -906,6 +1021,7 @@ const SoC_ops_t ESP32_ops = {
   ESP32_loop,
   ESP32_fini,
   ESP32_reset,
+  ESP32_sleep_ms,
   ESP32_getChipId,
   ESP32_EEPROM_begin,
   ESP32_WiFi_setOutputPower,
@@ -913,6 +1029,7 @@ const SoC_ops_t ESP32_ops = {
   ESP32_WiFiUDP_stopAll,
   ESP32_WiFi_transmit_UDP,
   ESP32_WiFi_Receive_UDP,
+  ESP32_WiFi_clients_count,
   ESP32_swSer_begin,
   ESP32_swSer_enableRx,
   ESP32_maxSketchSpace,
@@ -928,6 +1045,7 @@ const SoC_ops_t ESP32_ops = {
   ESP32_Baro_setup,
   ESP32_WDT_setup,
   ESP32_WDT_fini,
+  ESP32_Service_Mode,
   &ESP32_Bluetooth_ops
 };
 

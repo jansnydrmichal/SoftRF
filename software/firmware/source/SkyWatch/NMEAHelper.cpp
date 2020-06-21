@@ -1,6 +1,6 @@
 /*
  * NMEAHelper.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,6 @@
 #include "TrafficHelper.h"
 #include "EEPROMHelper.h"
 #include "WiFiHelper.h"
-
-#include "SkyWatch.h"
 
 TinyGPSPlus nmea;
 
@@ -63,6 +61,8 @@ uint32_t tx_packets_counter = 0;
 uint32_t rx_packets_counter = 0;
 
 static unsigned long NMEA_TimeMarker = 0;
+
+static bool RTC_sync = false;
 
 #if defined(NMEA_TCP_SERVICE)
 WiFiServer NmeaTCPServer(NMEA_TCP_PORT);
@@ -279,7 +279,8 @@ void NMEA_setup()
   if (settings->m.protocol == PROTOCOL_NMEA) {
     switch (settings->m.connection)
     {
-    case CON_SERIAL:
+    case CON_SERIAL_MAIN:
+    case CON_SERIAL_AUX:
       uint32_t SerialBaud;
 
       switch (settings->m.baudrate)
@@ -343,24 +344,21 @@ void NMEA_loop()
 
   switch (settings->m.connection)
   {
-  case CON_SERIAL:
+  case CON_SERIAL_MAIN:
     while (SerialInput.available() > 0) {
       c = SerialInput.read();
 //      Serial.print(c);
       NMEA_Parse_Character(c);
       NMEA_TimeMarker = millis();
     }
+    break;
+  case CON_SERIAL_AUX:
     /* read data from Type-C USB port */
-#if !defined(RASPBERRY_PI)
-    if ((void *) &Serial != (void *) &SerialInput)
-#endif
-    {
-      while (Serial.available() > 0) {
-        c = Serial.read();
+    while (Serial.available() > 0) {
+      c = Serial.read();
 //        Serial.print(c);
-        NMEA_Parse_Character(c);
-        NMEA_TimeMarker = millis();
-      }
+      NMEA_Parse_Character(c);
+      NMEA_TimeMarker = millis();
     }
     break;
   case CON_WIFI_UDP:
@@ -403,6 +401,21 @@ void NMEA_loop()
 
     PGRMZ_TimeMarker = millis();
   }
+
+#if !defined(EXCLUDE_RTC)
+  if (!RTC_sync) {
+    if (rtc &&
+        nmea.date.isValid()     &&
+        nmea.time.isValid()     &&
+        nmea.date.year() > 2018 &&
+        nmea.date.year() < 2030 ) {
+      rtc->setDateTime(nmea.date.year(),   nmea.date.month(),
+                       nmea.date.day(),    nmea.time.hour(),
+                       nmea.time.minute(), nmea.time.second());
+      RTC_sync = true;
+    }
+  }
+#endif /* EXCLUDE_RTC */
 
 #if defined(NMEA_TCP_SERVICE)
   uint8_t i;
@@ -479,6 +492,13 @@ bool NMEA_hasGNSS()
 bool NMEA_hasFLARM()
 {
   return (S_RX.isValid() && S_RX.age() < NMEA_EXP_TIME);
+}
+
+bool NMEA_has3DFix()
+{
+  return (S_GPS.isValid()                       &&
+          S_GPS.age() < NMEA_EXP_TIME           &&
+          NMEA_Status.GPS == GNSS_STATUS_3D_MOVING);
 }
 
 void NMEA_Out(byte *buf, size_t size, bool nl)

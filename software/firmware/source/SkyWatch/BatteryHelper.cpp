@@ -1,6 +1,6 @@
 /*
  * BatteryHelper.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if defined(ARDUINO)
-#include <Arduino.h>
-#endif /* ARDUINO */
-
 #include "SoCHelper.h"
 #include "BatteryHelper.h"
-#include "SkyWatch.h"
 
 unsigned long Battery_TimeMarker = 0;
 static int Battery_cutoff_count = 0;

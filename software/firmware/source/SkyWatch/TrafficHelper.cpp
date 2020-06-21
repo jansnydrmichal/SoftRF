@@ -1,6 +1,6 @@
 /*
  * TrafficHelper.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
 #include "TrafficHelper.h"
 #include "NMEAHelper.h"
 #include "EEPROMHelper.h"
-
-#include "SkyWatch.h"
 
 traffic_t ThisAircraft, Container[MAX_TRACKING_OBJECTS], fo, EmptyFO;
 traffic_by_dist_t traffic[MAX_TRACKING_OBJECTS];

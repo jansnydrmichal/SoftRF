@@ -1,6 +1,6 @@
 /*
  * SoCHelper.h
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 
 #define SOC_UNUSED_PIN 255
 
+#include "SkyWatch.h"
+#include "Platform_ESP8266.h"
 #include "Platform_ESP32.h"
 #include "BluetoothHelper.h"
 
@@ -31,6 +33,7 @@ typedef struct SoC_ops_struct {
   void (*loop)();
   void (*fini)();
   void (*reset)();
+  void (*sleep_ms)(int);
   uint32_t (*getChipId)();
   bool (*EEPROM_begin)(size_t);
   void (*WiFi_setOutputPower)(int);
@@ -38,6 +41,7 @@ typedef struct SoC_ops_struct {
   void (*WiFiUDP_stopAll)();
   void (*WiFi_transmit_UDP)(int, byte *, size_t);
   size_t (*WiFi_Receive_UDP)(uint8_t *, size_t);
+  int  (*WiFi_clients_count)();
   void (*swSer_begin)(unsigned long);
   void (*swSer_enableRx)(boolean);
   uint32_t (*maxSketchSpace)();
@@ -53,6 +57,7 @@ typedef struct SoC_ops_struct {
   bool (*Baro_setup)();
   void (*WDT_setup)();
   void (*WDT_fini)();
+  void (*Service_Mode)(boolean);
   Bluetooth_ops_t *Bluetooth;
 } SoC_ops_t;
 

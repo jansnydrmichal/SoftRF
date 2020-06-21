@@ -1,6 +1,6 @@
 /*
  * Platform_ESP32.cpp
- * Copyright (C) 2018-2019 Linar Yusupov
+ * Copyright (C) 2018-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include <rom/spi_flash.h>
 #include <flashchips.h>
 #include <axp20x.h>
-#include <pcf8563.h>
 #include <TFT_eSPI.h>
 
 #include "Platform_ESP32.h"
@@ -47,9 +46,12 @@
 // RFM95W pin mapping
 lmic_pinmap lmic_pins = {
     .nss = SOC_GPIO_PIN_SS,
-    .rxtx = { LMIC_UNUSED_PIN, LMIC_UNUSED_PIN },
+    .txe = LMIC_UNUSED_PIN,
+    .rxe = LMIC_UNUSED_PIN,
     .rst = SOC_GPIO_PIN_RST,
     .dio = {LMIC_UNUSED_PIN, LMIC_UNUSED_PIN, LMIC_UNUSED_PIN},
+    .busy = SOC_GPIO_PIN_TXE,
+    .tcxo = LMIC_UNUSED_PIN,
 };
 
 WebServer server ( 80 );
@@ -77,7 +79,6 @@ U8X8_SSD1306_128X64_NONAME_2ND_HW_I2C u8x8_heltec(HELTEC_OLED_PIN_RST,
                                                   HELTEC_OLED_PIN_SDA);
 
 AXP20X_Class axp;
-PCF8563_Class rtc;
 
 static U8X8_SSD1306_128X64_NONAME_2ND_HW_I2C *u8x8 = NULL;
 static TFT_eSPI *tft = NULL;
@@ -95,10 +96,12 @@ static union {
   uint64_t chipmacid;
 };
 
+static bool OLED_display_probe_status = false;
 static bool OLED_display_frontpage = false;
 static uint32_t prev_tx_packets_counter = 0;
 static uint32_t prev_rx_packets_counter = 0;
 extern uint32_t tx_packets_counter, rx_packets_counter;
+extern bool loopTaskWDTEnabled;
 
 const char *OLED_Protocol_ID[] = {
   [RF_PROTOCOL_LEGACY]    = "L",
@@ -184,10 +187,6 @@ static void ESP32_setup()
       hw_info.model = SOFTRF_MODEL_PRIME_MK2;
       break;
     }
-  } else {
-    if (ESP32_getFlashId() == MakeFlashId(WINBOND_NEX_ID, WINBOND_NEX_W25Q128_V)) {
-      hw_info.model = SOFTRF_MODEL_SKYWATCH;
-    }
   }
 
   ledcSetup(LEDC_CHANNEL_BUZZER, 0, LEDC_RESOLUTION_BUZZER);
@@ -221,8 +220,6 @@ static void ESP32_setup()
       axp.clearIRQ();
     }
 
-    rtc.begin(Wire1);
-
   } else if (hw_info.model == SOFTRF_MODEL_PRIME_MK2) {
     esp32_board = ESP32_TTGO_T_BEAM;
 
@@ -237,10 +234,13 @@ static void ESP32_setup()
 
       axp.setPowerOutPut(AXP192_LDO2, AXP202_ON);
       axp.setPowerOutPut(AXP192_LDO3, AXP202_ON);
-      axp.setPowerOutPut(AXP192_DCDC2, AXP202_ON);
-      axp.setPowerOutPut(AXP192_EXTEN, AXP202_ON);
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON);
-      axp.setDCDC1Voltage(3300);
+      axp.setPowerOutPut(AXP192_DCDC2, AXP202_ON); // NC
+      axp.setPowerOutPut(AXP192_EXTEN, AXP202_ON);
+
+      axp.setDCDC1Voltage(3300); //       AXP192 power-on value: 3300
+      axp.setLDO2Voltage (3300); // LoRa, AXP192 power-on value: 3300
+      axp.setLDO3Voltage (3000); // GPS,  AXP192 power-on value: 2800
 
       pinMode(SOC_GPIO_PIN_TBEAM_V08_PMU_IRQ, INPUT_PULLUP);
 
@@ -252,7 +252,8 @@ static void ESP32_setup()
     } else {
       hw_info.revision = 2;
     }
-    lmic_pins.rst = SOC_GPIO_PIN_TBEAM_RF_RST_V05;
+    lmic_pins.rst  = SOC_GPIO_PIN_TBEAM_RF_RST_V05;
+    lmic_pins.busy = SOC_GPIO_PIN_TBEAM_RF_BUSY_V08;
   }
 }
 
@@ -357,8 +358,15 @@ static void ESP32_reset()
 static uint32_t ESP32_getChipId()
 {
 #if !defined(SOFTRF_ADDRESS)
-  return (uint32_t) efuse_mac[5]        | (efuse_mac[4] << 8) | \
-                   (efuse_mac[3] << 16) | (efuse_mac[2] << 24);
+  uint32_t id = (uint32_t) efuse_mac[5]        | ((uint32_t) efuse_mac[4] << 8) | \
+               ((uint32_t) efuse_mac[3] << 16) | ((uint32_t) efuse_mac[2] << 24);
+
+  /* remap address to avoid overlapping with congested FLARM range */
+  if (((id & 0x00FFFFFF) >= 0xDD0000) && ((id & 0x00FFFFFF) <= 0xDFFFFF)) {
+    id += 0x100000;
+  }
+
+  return id;
 #else
   return (SOFTRF_ADDRESS & 0xFFFFFFFFU );
 #endif /* SOFTRF_ADDRESS */
@@ -444,6 +452,11 @@ static String ESP32_getResetReason()
     case RTCWDT_RTC_RESET       : return F("RTCWDT_RTC_RESET");
     default                     : return F("NO_MEAN");
   }
+}
+
+static uint32_t ESP32_getFreeHeap()
+{
+  return ESP.getFreeHeap();
 }
 
 static long ESP32_random(long howsmall, long howBig)
@@ -634,22 +647,25 @@ static void ESP32_swSer_begin(unsigned long baud)
     Serial.println(F(") is detected."));
 
     if (hw_info.revision == 8) {
-      swSer.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_TBEAM_V08_RX, SOC_GPIO_PIN_TBEAM_V08_TX);
+      swSer.begin(baud, SERIAL_IN_BITS, SOC_GPIO_PIN_TBEAM_V08_RX, SOC_GPIO_PIN_TBEAM_V08_TX);
     } else {
-      swSer.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_TBEAM_V05_RX, SOC_GPIO_PIN_TBEAM_V05_TX);
+      swSer.begin(baud, SERIAL_IN_BITS, SOC_GPIO_PIN_TBEAM_V05_RX, SOC_GPIO_PIN_TBEAM_V05_TX);
     }
   } else {
     if (esp32_board == ESP32_TTGO_T_WATCH) {
       Serial.println(F("INFO: TTGO T-Watch is detected."));
-      swSer.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_TWATCH_RX, SOC_GPIO_PIN_TWATCH_TX);
+      swSer.begin(baud, SERIAL_IN_BITS, SOC_GPIO_PIN_TWATCH_RX, SOC_GPIO_PIN_TWATCH_TX);
     } else if (esp32_board == ESP32_TTGO_V2_OLED) {
       /* 'Mini' (TTGO LoRa V2 + GNSS) */
-      swSer.begin(baud, SERIAL_8N1, TTGO_V2_PIN_GNSS_RX, TTGO_V2_PIN_GNSS_TX);
+      swSer.begin(baud, SERIAL_IN_BITS, TTGO_V2_PIN_GNSS_RX, TTGO_V2_PIN_GNSS_TX);
     } else {
       /* open Standalone's GNSS port */
-      swSer.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_GNSS_RX, SOC_GPIO_PIN_GNSS_TX);
+      swSer.begin(baud, SERIAL_IN_BITS, SOC_GPIO_PIN_GNSS_RX, SOC_GPIO_PIN_GNSS_TX);
     }
   }
+
+  /* Default Rx buffer size (256 bytes) is sometimes not big enough */
+  // swSer.setRxBufferSize(512);
 
   /* Need to gather some statistics on variety of flash IC usage */
   Serial.print(F("Flash memory ID: "));
@@ -856,7 +872,26 @@ static void ESP32_Display_loop()
   case DISPLAY_OLED_TTGO:
   case DISPLAY_OLED_HELTEC:
     if (u8x8) {
-      if (!OLED_display_frontpage) {
+      if (!OLED_display_probe_status) {
+        u8x8->clear();
+
+        u8x8->draw2x2String(0, 0, "RADIO");
+        u8x8->draw2x2String(14, 0, hw_info.rf   != RF_IC_NONE       ? "+" : "-");
+        u8x8->draw2x2String(0, 2, "GNSS");
+        u8x8->draw2x2String(14, 2, hw_info.gnss != GNSS_MODULE_NONE ? "+" : "-");
+        u8x8->draw2x2String(0, 4, "OLED");
+        u8x8->draw2x2String(14, 4, hw_info.display != DISPLAY_NONE  ? "+" : "-");
+        u8x8->draw2x2String(0, 6, "BARO");
+        u8x8->draw2x2String(14, 6, hw_info.baro != BARO_MODULE_NONE ? "+" : "-");
+
+        delay(3000);
+
+        if (loopTaskWDTEnabled) {
+          feedLoopWDT();
+        }
+
+        OLED_display_probe_status = true;
+      } else if (!OLED_display_frontpage) {
 
         u8x8->clear();
 
@@ -876,7 +911,11 @@ static void ESP32_Display_loop()
 
         u8x8->drawString(9, 5, TX_text);
 
-        itoa(tx_packets_counter % 1000, buf, 10);
+        if (settings->txpower == RF_TX_POWER_OFF ) {
+          strcpy(buf, "OFF");
+        } else {
+          itoa(tx_packets_counter % 1000, buf, 10);
+        }
         u8x8->draw2x2String(8, 6, buf);
 
         OLED_display_frontpage = true;
@@ -1033,10 +1072,15 @@ static bool ESP32_Baro_setup() {
 static void ESP32_UATSerial_begin(unsigned long baud)
 {
   /* open Standalone's I2C/UATSerial port */
-  UATSerial.begin(baud, SERIAL_8N1, SOC_GPIO_PIN_CE, SOC_GPIO_PIN_PWR);
+  UATSerial.begin(baud, SERIAL_IN_BITS, SOC_GPIO_PIN_CE, SOC_GPIO_PIN_PWR);
 }
 
-static void ESP32_CC13XX_restart()
+static void ESP32_UATSerial_updateBaudRate(unsigned long baud)
+{
+  UATSerial.updateBaudRate(baud);
+}
+
+static void ESP32_UATModule_restart()
 {
   digitalWrite(SOC_GPIO_PIN_TXE, LOW);
   pinMode(SOC_GPIO_PIN_TXE, OUTPUT);
@@ -1060,6 +1104,21 @@ static void ESP32_WDT_fini()
   disableLoopWDT();
 }
 
+static void ESP32_Button_setup()
+{
+  /* TODO */
+}
+
+static void ESP32_Button_loop()
+{
+  /* TODO */
+}
+
+static void ESP32_Button_fini()
+{
+  /* TODO */
+}
+
 const SoC_ops_t ESP32_ops = {
   SOC_ESP32,
   "ESP32",
@@ -1071,6 +1130,7 @@ const SoC_ops_t ESP32_ops = {
   ESP32_getResetInfoPtr,
   ESP32_getResetInfo,
   ESP32_getResetReason,
+  ESP32_getFreeHeap,
   ESP32_random,
   ESP32_Sound_test,
   ESP32_maxSketchSpace,
@@ -1093,9 +1153,12 @@ const SoC_ops_t ESP32_ops = {
   ESP32_get_PPS_TimeMarker,
   ESP32_Baro_setup,
   ESP32_UATSerial_begin,
-  ESP32_CC13XX_restart,
+  ESP32_UATModule_restart,
   ESP32_WDT_setup,
-  ESP32_WDT_fini
+  ESP32_WDT_fini,
+  ESP32_Button_setup,
+  ESP32_Button_loop,
+  ESP32_Button_fini
 };
 
 #endif /* ESP32 */

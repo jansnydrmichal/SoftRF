@@ -1,6 +1,6 @@
 /*
  * WiFiHelper.h
- * Copyright (C) 2016-2019 Linar Yusupov
+ * Copyright (C) 2016-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,8 @@
 #include <WiFiUdp.h>
 #endif
 
-#include "SkyWatch.h"
+#include "SoCHelper.h"
 
-#define HOSTNAME            "SkyWatch-"
 #define UDP_PACKET_BUFSIZE  256
 
 enum
@@ -39,7 +38,6 @@ void WiFi_setup(void);
 void WiFi_loop(void);
 void WiFi_fini(void);
 
-extern String host_name;
 #if defined(ARDUINO) && !defined(ENERGIA_ARCH_CC13XX)
 extern WiFiUDP Uni_Udp;
 #endif

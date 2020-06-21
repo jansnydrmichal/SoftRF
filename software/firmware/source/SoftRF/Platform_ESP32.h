@@ -1,6 +1,6 @@
 /*
  * Platform_ESP32.h
- * Copyright (C) 2018-2019 Linar Yusupov
+ * Copyright (C) 2018-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,9 @@
 /* Maximum of tracked flying objects is now SoC-specific constant */
 #define MAX_TRACKING_OBJECTS    8
 
+#define DEFAULT_SOFTRF_MODEL    SOFTRF_MODEL_STANDALONE
+
+#define SerialOutput            Serial
 #define SoftwareSerial          HardwareSerial
 #define swSer                   Serial1
 #define UATSerial               Serial2
@@ -89,7 +92,9 @@ extern Adafruit_NeoPixel strip;
                                   SOC_GPIO_PIN_TBEAM_LED_V02 :          \
                                   (hw_info.revision == 5 ?              \
                                     SOC_GPIO_PIN_TBEAM_LED_V05 :        \
-                                    SOC_UNUSED_PIN)))
+                                    (hw_info.revision == 11 ?           \
+                                      SOC_GPIO_PIN_TBEAM_LED_V11 :      \
+                                      SOC_UNUSED_PIN))))
 
 #define SOC_GPIO_PIN_GNSS_PPS (hw_info.model != SOFTRF_MODEL_PRIME_MK2 ?\
                                 SOC_UNUSED_PIN :                        \
@@ -126,6 +131,7 @@ extern Adafruit_NeoPixel strip;
 // status LED
 #define SOC_GPIO_PIN_TBEAM_LED_V02      21
 #define SOC_GPIO_PIN_TBEAM_LED_V05      14
+#define SOC_GPIO_PIN_TBEAM_LED_V11      4
 // button
 #define SOC_GPIO_PIN_TBEAM_V05_BUTTON   39
 #define SOC_GPIO_PIN_TBEAM_V08_BUTTON   38
@@ -134,6 +140,8 @@ extern Adafruit_NeoPixel strip;
 // SX1276 RESET
 #define SOC_GPIO_PIN_TBEAM_RF_RST_V02   SOC_UNUSED_PIN
 #define SOC_GPIO_PIN_TBEAM_RF_RST_V05   23
+// SX1262 BUSY
+#define SOC_GPIO_PIN_TBEAM_RF_BUSY_V08  32
 // 1st I2C bus on the T-Beam
 #define SOC_GPIO_PIN_TBEAM_SDA          13
 #define SOC_GPIO_PIN_TBEAM_SCL          2
@@ -216,8 +224,11 @@ struct rst_info {
 
 #define NMEA_TCP_SERVICE
 #define USE_NMEALIB
+//#define USE_NMEA_CFG
 //#define USE_AT6558_SETUP
-//#define USE_S7XG_DRIVER
+//#define USE_BASICMAC
+
+#define EXCLUDE_CC13XX
 
 #define POWER_SAVING_WIFI_TIMEOUT 600000UL /* 10 minutes */
 

@@ -1,9 +1,15 @@
-#if defined(ENERGIA_ARCH_CC13XX)
+#if defined(ENERGIA_ARCH_CC13XX) || defined(ENERGIA_ARCH_CC13X2)
 
 #ifndef CC13XX_H
 #define CC13XX_H
 
 #define static_assert(x,y) ({ })
+
+#ifndef nullptr
+#define nullptr            ((u1_t *) 0)
+#endif
+
+#ifdef __cplusplus
 
 class SPISettings {
 public:
@@ -14,5 +20,7 @@ public:
   uint8_t  _dataMode;
 };
 
+#endif /* __cplusplus */
+
 #endif // CC13XX_H
-#endif // ENERGIA_ARCH_CC13XX
+#endif // ENERGIA_ARCH_CC13XX || ENERGIA_ARCH_CC13X2

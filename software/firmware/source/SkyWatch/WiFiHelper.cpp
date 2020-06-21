@@ -1,6 +1,6 @@
 /*
  * WiFiHelper.cpp
- * Copyright (C) 2016-2019 Linar Yusupov
+ * Copyright (C) 2016-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 String station_ssid = MY_ACCESSPOINT_SSID ;
 String station_psk  = MY_ACCESSPOINT_PSK ;
 
-String host_name = HOSTNAME;
+String host_name;
 
 IPAddress local_IP(192,168,1,1);
 IPAddress gateway(192,168,1,1);
@@ -212,6 +212,9 @@ void WiFi_setup()
   }
 
   // Set Hostname.
+  host_name += hw_info.model == SOFTRF_MODEL_SKYWATCH ?
+                                SKYWATCH_IDENT : SOFTRF_IDENT;
+  host_name += "-";
   host_name += String((SoC->getChipId() & 0xFFFFFF), HEX);
   SoC->WiFi_hostname(host_name);
 
@@ -283,7 +286,7 @@ void WiFi_loop()
 #endif
 
 #if defined(POWER_SAVING_WIFI_TIMEOUT)
-  if (settings->s.power_save == POWER_SAVE_WIFI && WiFi.getMode() == WIFI_AP) {
+  if ((settings->s.power_save & POWER_SAVE_WIFI) && WiFi.getMode() == WIFI_AP) {
     if (SoC->WiFi_clients_count() == 0) {
       if ((millis() - WiFi_No_Clients_Time_ms) > POWER_SAVING_WIFI_TIMEOUT) {
         NMEA_fini();
@@ -291,7 +294,7 @@ void WiFi_loop()
         WiFi_fini();
 
         if (settings->s.nmea_p) {
-          StdOut.println(F("$PSRFS,WIFI_OFF"));
+          Serial.println(F("$PSRFS,WIFI_OFF"));
         }
       }
     } else {

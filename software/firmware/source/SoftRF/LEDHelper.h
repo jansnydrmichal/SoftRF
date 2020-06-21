@@ -1,6 +1,6 @@
 /*
  * LEDHelper.h
- * Copyright (C) 2016-2019 Linar Yusupov
+ * Copyright (C) 2016-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,9 @@
 #ifndef LEDHELPER_H
 #define LEDHELPER_H
 
-#include <TimeLib.h>
-
-#include "SoftRF.h"
+#include "SoCHelper.h"
 #include "GNSSHelper.h"
 #include "EEPROMHelper.h"
-#include "SoCHelper.h"
 
 #define STATUS_LED_NUM  4
 //#define RING_LED_NUM (ESP.getChipId() == 0xeacdd ? 12 : 8)

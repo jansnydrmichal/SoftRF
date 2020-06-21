@@ -1,6 +1,6 @@
 /*
  * WebHelper.cpp
- * Copyright (C) 2016-2019 Linar Yusupov
+ * Copyright (C) 2016-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,15 +25,22 @@
 #include "NMEAHelper.h"
 #include "BatteryHelper.h"
 #include "GDL90Helper.h"
+#include "BaroHelper.h"
 
 #include <protocol.h>
 #include <freqplan.h>
 
+extern String host_name;
+
+#define NOLOGO
+
 static uint32_t prev_rx_pkt_cnt = 0;
 
+#if !defined(NOLOGO)
 static const char Logo[] PROGMEM = {
 #include "Logo.h"
     } ;
+#endif
 
 #include "jquery_min_js.h"
 
@@ -83,12 +90,102 @@ static const char about_html[] PROGMEM = "<html>\
 <tr><th align=left>Shenzhen Xin Yuan<br>(LilyGO) ET company</th><td align=left>TTGO T-Watch</td></tr>\
 <tr><th align=left>Brian Park</th><td align=left>AceButton library</td></tr>\
 <tr><th align=left>flashrom.org project</th><td align=left>Flashrom library</td></tr>\
-<tr><th align=left>Evandro Copercini and German Martin</th><td align=left>ESP32 BT SPP library</td></tr>\
+<tr><th align=left>Evandro Copercini</th><td align=left>ESP32 BT SPP library</td></tr>\
+<tr><th align=left>Lewis He</th><td align=left>AXP20X, BMA423, FT5206 and PCF8563 libraries</td></tr>\
+<tr><th align=left>Bodmer</th><td align=left>TFT library</td></tr>\
 </table>\
 <hr>\
-Copyright (C) 2019 &nbsp;&nbsp;&nbsp; Linar Yusupov\
+Copyright (C) 2019-2020 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 </body>\
 </html>";
+
+#if defined(EXPERIMENTAL)
+static const char service_html[] PROGMEM = "<html>\
+  <head>\
+    <meta name='viewport' content='width=device-width, initial-scale=1'>\
+    <title>Service Mode</title>\
+  </head>\
+<body>\
+<h1 align=center>Service Mode</h1>\
+<br><br><p align=center>You've entered service mode.</p>\
+<p align=center><input type=button onClick=\"location.href='/leave'\" value='Leave'></p>\
+</body>\
+</html>";
+
+static const char leave_html[] PROGMEM = "<html>\
+  <head>\
+    <meta http-equiv='refresh' content='12; url=/'>\
+    <meta name='viewport' content='width=device-width, initial-scale=1'>\
+    <title>Service Mode</title>\
+  </head>\
+<body>\
+<h1 align=center>Service Mode</h1>\
+<br><br><p align=center>You are leaving service mode. Please, wait...</p>\
+</body>\
+</html>";
+
+static const char root_html[] PROGMEM = "<html>\
+  <head>\
+    <meta name='viewport' content='width=device-width, initial-scale=1'>\
+    <title>SkyWatch</title>\
+  </head>\
+<body>\
+<h1 align=center>SkyWatch</h1>\
+<br><br><p align=center>Welcome to SkyWatch !</p>\
+<p align=center><input type=button onClick=\"location.href='http://192.168.1.1/status'\" value='Continue'></p>\
+</body>\
+</html>";
+
+/** Is this an IP? */
+boolean isIp(String str) {
+  for (size_t i = 0; i < str.length(); i++) {
+    int c = str.charAt(i);
+    if (c != '.' && (c < '0' || c > '9')) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** IP to String? */
+String toStringIp(IPAddress ip) {
+  String res = "";
+  for (int i = 0; i < 3; i++) {
+    res += String((ip >> (8 * i)) & 0xFF) + ".";
+  }
+  res += String(((ip >> 8 * 3)) & 0xFF);
+  return res;
+}
+
+/*
+ * Redirect to captive portal if we got a request for another domain.
+ * Return true in that case so the page handler do not try to handle the request again.
+ */
+bool captivePortal() {
+  if (!isIp(server.hostHeader()) && server.hostHeader() != (String(host_name) + ".local")) {
+//    Serial.println("Request redirected to captive portal");
+    server.sendHeader(String(F("Location")), String("http://") + toStringIp(server.client().localIP()), true);
+    server.send(302, "text/plain", "");   // Empty content inhibits Content-length header so we have to close the socket ourselves.
+    server.client().stop(); // Stop is needed because we sent no content length
+    return true;
+  }
+  return false;
+}
+
+void handleRoot() {
+
+  if (captivePortal()) { // If caprive portal redirect instead of displaying the page.
+    return;
+  }
+
+    SoC->swSer_enableRx(false);
+    server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
+    server.sendHeader(String(F("Pragma")), String(F("no-cache")));
+    server.sendHeader(String(F("Expires")), String(F("-1")));
+    server.send_P ( 200, PSTR("text/html"), root_html);
+    SoC->swSer_enableRx(true);
+}
+#endif /* EXPERIMENTAL */
 
 void handleSettings() {
 
@@ -113,7 +210,88 @@ void handleSettings() {
 <body>\
 <h1 align=center>Settings</h1>\
 <form action='/input' method='GET'>\
-<table width=100%%>\
+<table width=100%%>"));
+
+  len = strlen(offset);
+  offset += len;
+  size -= len;
+
+  if (hw_info.model == SOFTRF_MODEL_WEBTOP) {
+    /* SoC specific part 6 */
+    snprintf_P ( offset, size,
+      PSTR("\
+<tr>\
+<th align=left>Connection port</th>\
+<td align=right>\
+<select name='connection'>\
+<option %s value='%d'>MAIN</option>\
+<option %s value='%d'>AUX</option>\
+<!--<option %s value='%d'>WiFi UDP</option>\
+<option %s value='%d'>Bluetooth SPP</option> -->\
+</select>\
+</td>\
+</tr>\
+<!-- <tr>\
+<th align=left>Protocol</th>\
+<td align=right>\
+<select name='protocol'>\
+<option %s value='%d'>NMEA</option>\
+<option %s value='%d'>GDL90</option>\
+</select>\
+</td>\
+</tr> -->\
+<tr>\
+<th align=left>Baud rate</th>\
+<td align=right>\
+<select name='baudrate'>\
+<option %s value='%d'>4800</option>\
+<option %s value='%d'>9600</option>\
+<option %s value='%d'>19200</option>\
+<option %s value='%d'>38400</option>\
+<option %s value='%d'>57600</option>"),
+    (settings->m.connection == CON_SERIAL_MAIN  ? "selected" : ""), CON_SERIAL_MAIN,
+    (settings->m.connection == CON_SERIAL_AUX   ? "selected" : ""), CON_SERIAL_AUX,
+    (settings->m.connection == CON_WIFI_UDP     ? "selected" : ""), CON_WIFI_UDP,
+    (settings->m.connection == CON_BLUETOOTH    ? "selected" : ""), CON_BLUETOOTH,
+    (settings->m.protocol   == PROTOCOL_NMEA    ? "selected" : ""), PROTOCOL_NMEA,
+    (settings->m.protocol   == PROTOCOL_GDL90   ? "selected" : ""), PROTOCOL_GDL90,
+    (settings->m.baudrate   == B4800            ? "selected" : ""), B4800,
+    (settings->m.baudrate   == B9600            ? "selected" : ""), B9600,
+    (settings->m.baudrate   == B19200           ? "selected" : ""), B19200,
+    (settings->m.baudrate   == B38400           ? "selected" : ""), B38400,
+    (settings->m.baudrate   == B57600           ? "selected" : ""), B57600
+    );
+
+    len = strlen(offset);
+    offset += len;
+    size -= len;
+
+    /* SoC specific part 7 */
+    if (SoC->id == SOC_ESP32) {
+      snprintf_P ( offset, size,
+        PSTR("\
+<option %s value='%d'>115200</option>\
+<option %s value='%d'>2000000</option>"),
+      (settings->m.baudrate   == B115200        ? "selected" : ""), B115200,
+      (settings->m.baudrate   == B2000000       ? "selected" : ""), B2000000
+      );
+      len = strlen(offset);
+      offset += len;
+      size -= len;
+    }
+
+    snprintf_P ( offset, size,
+      PSTR("</select></td></tr><tr><th>&nbsp;</th><td>&nbsp;</td></tr>"));
+
+    len = strlen(offset);
+    offset += len;
+    size -= len;
+  }
+
+#if 0
+  /* Common part 2 */
+  snprintf_P ( offset, size,
+    PSTR("\
 <!-- <tr>\
 <th align=left>Mode</th>\
 <td align=right>\
@@ -135,15 +313,17 @@ void handleSettings() {
   len = strlen(offset);
   offset += len;
   size -= len;
+#endif
 
   /* Radio specific part */
-  if (hw_info.rf == RF_IC_SX1276) {
+  if (hw_info.rf == RF_IC_SX1276) {  /* + RF_IC_CC13XX */
     snprintf_P ( offset, size,
       PSTR("\
 <tr>\
 <th align=left>Protocol</th>\
 <td align=right>\
 <select name='protocol'>\
+<option %s value='%d'>%s</option>\
 <option %s value='%d'>%s</option>\
 <option %s value='%d'>%s</option>\
 <option %s value='%d'>%s</option>\
@@ -157,6 +337,8 @@ void handleSettings() {
      RF_PROTOCOL_OGNTP, "OGNTP",
     (settings->s.rf_protocol == RF_PROTOCOL_P3I ? "selected" : ""),
      RF_PROTOCOL_P3I, "P3I",
+    (settings->s.rf_protocol == RF_PROTOCOL_ADSB_UAT ? "selected" : ""),
+     RF_PROTOCOL_ADSB_UAT, "UAT",
     (settings->s.rf_protocol == RF_PROTOCOL_FANET ? "selected" : ""),
      RF_PROTOCOL_FANET, "FANET"
     );
@@ -170,8 +352,7 @@ void handleSettings() {
 </tr>"),
     (settings->s.rf_protocol == RF_PROTOCOL_LEGACY   ? "Legacy" :
     (settings->s.rf_protocol == RF_PROTOCOL_ADSB_UAT ? "UAT" :
-    (settings->s.rf_protocol == RF_PROTOCOL_FANET    ? "FANET"  :
-     "UNK")))
+     "UNK"))
     );
   }
   len = strlen(offset);
@@ -209,6 +390,7 @@ void handleSettings() {
 <option %s value='%d'>Hangglider</option>\
 <option %s value='%d'>Paraglider</option>\
 <option %s value='%d'>Balloon</option>\
+<option %s value='%d'>Static</option>\
 </select>\
 </td>\
 </tr>\
@@ -269,6 +451,7 @@ void handleSettings() {
   (settings->s.aircraft_type == AIRCRAFT_TYPE_HANGGLIDER ? "selected" : ""),  AIRCRAFT_TYPE_HANGGLIDER,
   (settings->s.aircraft_type == AIRCRAFT_TYPE_PARAGLIDER ? "selected" : ""),  AIRCRAFT_TYPE_PARAGLIDER,
   (settings->s.aircraft_type == AIRCRAFT_TYPE_BALLOON ? "selected" : ""),  AIRCRAFT_TYPE_BALLOON,
+  (settings->s.aircraft_type == AIRCRAFT_TYPE_STATIC ? "selected" : ""),  AIRCRAFT_TYPE_STATIC,
   (settings->s.alarm == TRAFFIC_ALARM_NONE ? "selected" : ""),  TRAFFIC_ALARM_NONE,
   (settings->s.alarm == TRAFFIC_ALARM_DISTANCE ? "selected" : ""),  TRAFFIC_ALARM_DISTANCE,
   (settings->s.alarm == TRAFFIC_ALARM_VECTOR ? "selected" : ""),  TRAFFIC_ALARM_VECTOR,
@@ -494,7 +677,7 @@ void handleSettings() {
 <td align=right>\
 <select name='power_save'>\
 <option %s value='%d'>Disabled</option>\
-<option %s value='%d'>WiFi OFF (10 min.)</option>\
+<option %s value='%d'>WiFi OFF (5 min.)</option>\
 </select>\
 </td>\
 </tr>\
@@ -511,69 +694,16 @@ void handleSettings() {
 <input type='radio' name='no_track' value='0' %s>Off\
 <input type='radio' name='no_track' value='1' %s>On\
 </td>\
-</tr>\
-<tr><th>&nbsp;</th><td>&nbsp;</td></tr>\
-<!-- <tr>\
-<th align=left>Connection type</th>\
-<td align=right>\
-<select name='connection'>\
-<option %s value='%d'>Serial</option>\
-<option %s value='%d'>WiFi UDP</option>\
-<option %s value='%d'>Bluetooth SPP</option>\
-</select>\
-</td>\
-</tr>\
-<tr>\
-<th align=left>Protocol</th>\
-<td align=right>\
-<select name='protocol'>\
-<option %s value='%d'>NMEA</option>\
-<option %s value='%d'>GDL90</option>\
-</select>\
-</td>\
-</tr>\
-<tr>\
-<th align=left>Baud rate</th>\
-<td align=right>\
-<select name='baudrate'>\
-<option %s value='%d'>4800</option>\
-<option %s value='%d'>9600</option>\
-<option %s value='%d'>19200</option>\
-<option %s value='%d'>38400</option>\
-<option %s value='%d'>57600</option>"),
+</tr>"),
   (settings->s.power_save == POWER_SAVE_NONE ? "selected" : ""), POWER_SAVE_NONE,
   (settings->s.power_save == POWER_SAVE_WIFI ? "selected" : ""), POWER_SAVE_WIFI,
   (!settings->s.stealth ? "checked" : "") , (settings->s.stealth ? "checked" : ""),
-  (!settings->s.no_track ? "checked" : "") , (settings->s.no_track ? "checked" : ""),
-  (settings->m.connection == CON_SERIAL     ? "selected" : ""), CON_SERIAL,
-  (settings->m.connection == CON_WIFI_UDP   ? "selected" : ""), CON_WIFI_UDP,
-  (settings->m.connection == CON_BLUETOOTH  ? "selected" : ""), CON_BLUETOOTH,
-  (settings->m.protocol   == PROTOCOL_NMEA  ? "selected" : ""), PROTOCOL_NMEA,
-  (settings->m.protocol   == PROTOCOL_GDL90 ? "selected" : ""), PROTOCOL_GDL90,
-  (settings->m.baudrate   == B4800          ? "selected" : ""), B4800,
-  (settings->m.baudrate   == B9600          ? "selected" : ""), B9600,
-  (settings->m.baudrate   == B19200         ? "selected" : ""), B19200,
-  (settings->m.baudrate   == B38400         ? "selected" : ""), B38400,
-  (settings->m.baudrate   == B57600         ? "selected" : ""), B57600
+  (!settings->s.no_track ? "checked" : "") , (settings->s.no_track ? "checked" : "")
   );
 
   len = strlen(offset);
   offset += len;
   size -= len;
-
-  /* SoC specific part 6 */
-  if (SoC->id == SOC_ESP32) {
-    snprintf_P ( offset, size,
-      PSTR("\
-<option %s value='%d'>115200</option>\
-<option %s value='%d'>2000000</option>"),
-    (settings->m.baudrate   == B115200        ? "selected" : ""), B115200,
-    (settings->m.baudrate   == B2000000       ? "selected" : ""), B2000000
-    );
-    len = strlen(offset);
-    offset += len;
-    size -= len;
-  }
 
 #if 0
     /* Common part 7 */
@@ -620,7 +750,7 @@ void handleSettings() {
  */
 
 #if 0
-  /* SoC specific part 7 */
+  /* SoC specific part 8 */
   if (SoC->id == SOC_ESP32) {
     snprintf_P ( offset, size,
       PSTR("\
@@ -645,12 +775,11 @@ void handleSettings() {
   }
 #endif
 
-  /* Common part 8 */
-  snprintf_P ( offset, size,
-    PSTR("\
-</select>\
-</td>\
-</tr> -->\
+  if (hw_info.display != DISPLAY_NONE) {
+    /* SoC specific part 9 */
+    snprintf_P ( offset, size,
+      PSTR("\
+<tr><th>&nbsp;</th><td>&nbsp;</td></tr>\
 <tr>\
 <th align=left>Units</th>\
 <td align=right>\
@@ -665,8 +794,10 @@ void handleSettings() {
 <th align=left>View mode</th>\
 <td align=right>\
 <select name='vmode'>\
+<option %s value='%d'>status</option>\
 <option %s value='%d'>radar</option>\
 <option %s value='%d'>text</option>\
+<option %s value='%d'>time</option>\
 </select>\
 </td>\
 </tr>\
@@ -711,35 +842,37 @@ void handleSettings() {
 </select>\
 </td>\
 </tr>"),
-  (settings->m.units == UNITS_METRIC    ? "selected" : ""), UNITS_METRIC,
-  (settings->m.units == UNITS_IMPERIAL  ? "selected" : ""), UNITS_IMPERIAL,
-  (settings->m.units == UNITS_MIXED     ? "selected" : ""), UNITS_MIXED,
-  (settings->m.vmode == VIEW_MODE_RADAR ? "selected" : ""), VIEW_MODE_RADAR,
-  (settings->m.vmode == VIEW_MODE_TEXT  ? "selected" : ""), VIEW_MODE_TEXT,
-  (settings->m.orientation == DIRECTION_TRACK_UP ? "selected" : ""), DIRECTION_TRACK_UP,
-  (settings->m.orientation == DIRECTION_NORTH_UP ? "selected" : ""), DIRECTION_NORTH_UP,
-  (settings->m.zoom == ZOOM_LOWEST ? "selected" : ""), ZOOM_LOWEST,
-  (settings->m.zoom == ZOOM_LOW    ? "selected" : ""), ZOOM_LOW,
-  (settings->m.zoom == ZOOM_MEDIUM ? "selected" : ""), ZOOM_MEDIUM,
-  (settings->m.zoom == ZOOM_HIGH   ? "selected" : ""), ZOOM_HIGH,
-  (settings->m.adb == DB_AUTO      ? "selected" : ""), DB_AUTO,
-  (settings->m.adb == DB_FLN       ? "selected" : ""), DB_FLN,
-  (settings->m.adb == DB_OGN       ? "selected" : ""), DB_OGN,
-  (settings->m.adb == DB_ICAO      ? "selected" : ""), DB_ICAO,
-  (settings->m.idpref == ID_REG    ? "selected" : ""), ID_REG,
-  (settings->m.idpref == ID_TAIL   ? "selected" : ""), ID_TAIL,
-  (settings->m.idpref == ID_MAM    ? "selected" : ""), ID_MAM
-  );
+    (settings->m.units == UNITS_METRIC     ? "selected" : ""), UNITS_METRIC,
+    (settings->m.units == UNITS_IMPERIAL   ? "selected" : ""), UNITS_IMPERIAL,
+    (settings->m.units == UNITS_MIXED      ? "selected" : ""), UNITS_MIXED,
+    (settings->m.vmode == VIEW_MODE_STATUS ? "selected" : ""), VIEW_MODE_STATUS,
+    (settings->m.vmode == VIEW_MODE_RADAR  ? "selected" : ""), VIEW_MODE_RADAR,
+    (settings->m.vmode == VIEW_MODE_TEXT   ? "selected" : ""), VIEW_MODE_TEXT,
+    (settings->m.vmode == VIEW_MODE_TIME   ? "selected" : ""), VIEW_MODE_TIME,
+    (settings->m.orientation == DIRECTION_TRACK_UP ? "selected" : ""), DIRECTION_TRACK_UP,
+    (settings->m.orientation == DIRECTION_NORTH_UP ? "selected" : ""), DIRECTION_NORTH_UP,
+    (settings->m.zoom == ZOOM_LOWEST ? "selected" : ""), ZOOM_LOWEST,
+    (settings->m.zoom == ZOOM_LOW    ? "selected" : ""), ZOOM_LOW,
+    (settings->m.zoom == ZOOM_MEDIUM ? "selected" : ""), ZOOM_MEDIUM,
+    (settings->m.zoom == ZOOM_HIGH   ? "selected" : ""), ZOOM_HIGH,
+    (settings->m.adb == DB_AUTO      ? "selected" : ""), DB_AUTO,
+    (settings->m.adb == DB_FLN       ? "selected" : ""), DB_FLN,
+    (settings->m.adb == DB_OGN       ? "selected" : ""), DB_OGN,
+    (settings->m.adb == DB_ICAO      ? "selected" : ""), DB_ICAO,
+    (settings->m.idpref == ID_REG    ? "selected" : ""), ID_REG,
+    (settings->m.idpref == ID_TAIL   ? "selected" : ""), ID_TAIL,
+    (settings->m.idpref == ID_MAM    ? "selected" : ""), ID_MAM
+    );
 
-  len = strlen(offset);
-  offset += len;
-  size -= len;
+    len = strlen(offset);
+    offset += len;
+    size -= len;
 
 #if 0
-  /* SoC specific part 8 */
-  if (SoC->id == SOC_ESP32) {
-    snprintf_P ( offset, size,
-      PSTR("\
+    /* SoC specific part 10 */
+    if (SoC->id == SOC_ESP32) {
+      snprintf_P ( offset, size,
+        PSTR("\
 <tr>\
 <th align=left>Voice</th>\
 <td align=right>\
@@ -751,19 +884,21 @@ void handleSettings() {
 </select>\
 </td>\
 </tr>"),
-    (settings->m.voice == VOICE_OFF  ? "selected" : ""), VOICE_OFF,
-    (settings->m.voice == VOICE_1    ? "selected" : ""), VOICE_1,
-    (settings->m.voice == VOICE_2    ? "selected" : ""), VOICE_2,
-    (settings->m.voice == VOICE_3    ? "selected" : ""), VOICE_3
-    );
+      (settings->m.voice == VOICE_OFF  ? "selected" : ""), VOICE_OFF,
+      (settings->m.voice == VOICE_1    ? "selected" : ""), VOICE_1,
+      (settings->m.voice == VOICE_2    ? "selected" : ""), VOICE_2,
+      (settings->m.voice == VOICE_3    ? "selected" : ""), VOICE_3
+      );
 
-    len = strlen(offset);
-    offset += len;
-    size -= len;
-  }
+      len = strlen(offset);
+      offset += len;
+      size -= len;
+    }
 #endif
 
-  /* Common part 9 */
+  } /* hw_info.display != DISPLAY_NONE */
+
+  /* Common part 8 */
   snprintf_P ( offset, size,
     PSTR("\
 <!-- <tr>\
@@ -799,7 +934,7 @@ void handleSettings() {
   free(Settings_temp);
 }
 
-void handleRoot() {
+void handleStatus() {
   int sec = millis() / 1000;
   int min = sec / 60;
   int hr = min / 60;
@@ -810,7 +945,7 @@ void handleRoot() {
   time_t timestamp = now();
   char str_Vcc[8];
 
-  size_t size = 2500;
+  size_t size = 2700;
   char *offset;
   size_t len = 0;
 
@@ -824,33 +959,58 @@ void handleRoot() {
 
   snprintf_P ( offset, size,
     PSTR("<html>\
-  <head>\
-    <meta name='viewport' content='width=device-width, initial-scale=1'>\
-    <title>SkyWatch status</title>\
-  </head>\
+<head>\
+  <meta name='viewport' content='width=device-width, initial-scale=1'>\
+  <title>%s status</title>\
+</head>\
 <body>\
- <table width=100%%>\
+<table width=100%%>\
   <tr><!-- <td align=left><h1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</h1></td> -->\
-  <td align=center><h1>SkyWatch status</h1></td>\
+  <td align=center><h1>%s status</h1></td>\
   <!-- <td align=right><img src='/logo.png'></td> --></tr>\
- </table>\
- <table width=100%%>\
-  <tr><th align=left>Device Id</th><td align=right>%X</td></tr>\
-  <tr><th align=left>Software Version</th><td align=right>%s&nbsp;&nbsp;%s</td></tr>\
-  <tr><th align=left>Uptime</th><td align=right>%02d:%02d:%02d</td></tr>\
-  <tr><th align=left>Free memory</th><td align=right>%u</td></tr>\
-  <tr><th align=left>Battery voltage</th><td align=right><font color=%s>%s</font></td></tr>\
-  <tr><th align=left>&nbsp;</th><td align=right>&nbsp;</td></tr>\
-  <tr><th align=left>Display</th><td align=right>%s</td></tr>\
-  <tr><th align=left>Connection type</th><td align=right>%s</td></tr>"),
+</table>\
+<table width=100%%>\
+<tr><th align=left>Device Id</th><td align=right>%X</td></tr>\
+<tr><th align=left>Software Version</th><td align=right>%s&nbsp;&nbsp;%s</td></tr>\
+<tr><th align=left>Uptime</th><td align=right>%02d:%02d:%02d</td></tr>\
+<tr><th align=left>Free memory</th><td align=right>%u</td></tr>\
+<tr><th align=left>Battery voltage</th><td align=right><font color=%s>%s</font></td></tr>\
+<tr><th align=left>&nbsp;</th><td align=right>&nbsp;</td></tr>"),
+    hw_info.model == SOFTRF_MODEL_SKYWATCH ? SKYWATCH_IDENT : SOFTRF_IDENT " WT",
+    hw_info.model == SOFTRF_MODEL_SKYWATCH ? SKYWATCH_IDENT : SOFTRF_IDENT " WT",
     SoC->getChipId() & 0xFFFFFF, SKYWATCH_FIRMWARE_VERSION,
     (SoC == NULL ? "NONE" : SoC->name),
     hr, min % 60, sec % 60, ESP.getFreeHeap(),
-    low_voltage ? "red" : "green", str_Vcc,
-    hw_info.display      == DISPLAY_EPD_2_7  ? "e-Paper" :
-    hw_info.display      == DISPLAY_OLED_2_4 ? "OLED"    :
-    hw_info.display      == DISPLAY_TFT_TTGO ? "LCD"     : "NONE",
-    settings->m.connection == CON_SERIAL       ? "Serial" :
+    low_voltage ? "red" : "green", str_Vcc
+  );
+
+  len = strlen(offset);
+  offset += len;
+  size -= len;
+
+  if (hw_info.model == SOFTRF_MODEL_SKYWATCH) {
+
+    snprintf_P ( offset, size,
+      PSTR("\
+<tr><th align=left>Display</th><td align=right>%s</td></tr>\
+<tr><th align=left>Storage</th><td align=right>%s</td></tr>\
+<tr><th align=left>Baro</th><td align=right>%s</td></tr>"),
+      hw_info.display      == DISPLAY_EPD_2_7  ? "e-Paper" :
+      hw_info.display      == DISPLAY_OLED_2_4 ? "OLED"    :
+      hw_info.display      == DISPLAY_TFT_TTGO ? "LCD"     : "NONE",
+      hw_info.storage      == STORAGE_uSD      ? "uSD"     : "NONE",
+      (baro_chip == NULL ? "NONE" : baro_chip->name)
+    );
+
+    len = strlen(offset);
+    offset += len;
+    size -= len;
+  }
+
+  snprintf_P ( offset, size,
+    PSTR("<tr><th align=left>Connection type</th><td align=right>%s</td></tr>"),
+    settings->m.connection == CON_SERIAL_MAIN  ? "Main Serial" :
+    settings->m.connection == CON_SERIAL_AUX   ? "AUX Serial" :
     settings->m.connection == CON_BLUETOOTH    ? "Bluetooth" :
     settings->m.connection == CON_WIFI_UDP     ? "WiFi" : "NONE"
   );
@@ -864,9 +1024,9 @@ void handleRoot() {
   case CON_WIFI_UDP:
     snprintf_P ( offset, size,
       PSTR("\
-  <tr><th align=left>Link partner</th><td align=right>%s</td></tr>\
-  <tr><th align=left>Link status</th><td align=right>%s established</td></tr>\
-  <tr><th align=left>Assigned IP address</th><td align=right>%s</td></tr>"),
+<tr><th align=left>Link partner</th><td align=right>%s</td></tr>\
+<tr><th align=left>Link status</th><td align=right>%s established</td></tr>\
+<tr><th align=left>Assigned IP address</th><td align=right>%s</td></tr>"),
       settings->m.ssid && strlen(settings->m.ssid) > 0 ? settings->m.ssid : "NOT SET",
       WiFi.status() == WL_CONNECTED ? "" : "not",
       WiFi.localIP().toString().c_str()
@@ -874,16 +1034,16 @@ void handleRoot() {
     len = strlen(offset);
     offset += len;
     size -= len;
-  case CON_SERIAL:
+  case CON_SERIAL_MAIN:
+  case CON_SERIAL_AUX:
   case CON_BLUETOOTH:
     switch (settings->m.protocol)
     {
     case PROTOCOL_GDL90:
       snprintf_P ( offset, size,
         PSTR("\
-  <tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
-  <tr><th align=left>Data type</th><td align=right>%s %s</td></tr>\
-  "),
+<tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
+<tr><th align=left>Data type</th><td align=right>%s %s</td></tr>"),
         GDL90_isConnected()  ? "" : "not",
         GDL90_isConnected()  && !GDL90_hasHeartBeat() ? "UNK" : "",
         GDL90_hasHeartBeat() ? "GDL90"  : ""
@@ -893,22 +1053,23 @@ void handleRoot() {
     default:
       snprintf_P ( offset, size,
         PSTR("\
-  <tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
-  <tr><th align=left>Data type</th><td align=right>%s %s %s</td></tr>\
-  <tr><th align=left>Slave Id</th><td align=right>%X</td></tr>\
-  <tr><th align=left>RF protocol</th><td align=right>%s</td></tr>\
-  </table>\
-  <table width=100%%>\
-   <tr><th align=left>Packets</th>\
-    <td align=right><table><tr>\
-     <th align=left>Tx&nbsp;&nbsp;</th><td align=right>%u</td>\
-     <th align=left>&nbsp;&nbsp;&nbsp;&nbsp;Rx&nbsp;&nbsp;</th><td align=right>%u</td>\
-   </tr></table></td></tr>\
-  "),
+<tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
+<tr><th align=left>Data type</th><td align=right>%s %s %s</td></tr>\
+<tr><th align=left>GNSS fix</th><td align=right>%s</td></tr>\
+<tr><th align=left>Slave Id</th><td align=right>%X</td></tr>\
+<tr><th align=left>RF protocol</th><td align=right>%s</td></tr>\
+</table>\
+<table width=100%%>\
+<tr><th align=left>Packets</th>\
+  <td align=right><table><tr>\
+   <th align=left>Tx&nbsp;&nbsp;</th><td align=right>%u</td>\
+   <th align=left>&nbsp;&nbsp;&nbsp;&nbsp;Rx&nbsp;&nbsp;</th><td align=right>%u</td>\
+  </tr></table></td></tr>"),
         NMEA_isConnected() ? "" : "not",
         NMEA_isConnected() && !(NMEA_hasGNSS() || NMEA_hasFLARM()) ? "UNK" : "",
         NMEA_hasGNSS()     ? "GNSS"  : "",
         NMEA_hasFLARM()    ? "FLARM" : "",
+        NMEA_has3DFix()    ? "3D" : "NONE",
         ThisDevice.addr,
         ThisDevice.protocol == RF_PROTOCOL_LEGACY ? "Legacy" :
         ThisDevice.protocol == RF_PROTOCOL_OGNTP  ? "OGNTP"  :
@@ -930,14 +1091,14 @@ void handleRoot() {
 
   snprintf_P ( offset, size,
     PSTR(" </table>\
- <hr>\
- <table width=100%%>\
+<hr>\
+<table width=100%%>\
   <tr>\
     <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
     <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
     <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
   </tr>\
- </table>\
+</table>\
 </body>\
 </html>")
   );
@@ -1038,7 +1199,7 @@ PSTR("<html>\
 <head>\
 <meta http-equiv='refresh' content='15; url=/'>\
 <meta name='viewport' content='width=device-width, initial-scale=1'>\
-<title>SkyWatch Settings</title>\
+<title>%s Settings</title>\
 </head>\
 <body>\
 <h1 align=center>New settings:</h1>\
@@ -1084,6 +1245,7 @@ PSTR("<html>\
   <p align=center><h1 align=center>Restart is in progress... Please, wait!</h1></p>\
 </body>\
 </html>"),
+  hw_info.model == SOFTRF_MODEL_SKYWATCH ? SKYWATCH_IDENT : SOFTRF_IDENT " WT",
   settings->s.mode, settings->s.rf_protocol, settings->s.band,
   settings->s.aircraft_type, settings->s.alarm, settings->s.txpower,
   settings->s.volume, settings->s.pointer, settings->s.bluetooth,
@@ -1111,7 +1273,11 @@ PSTR("<html>\
 }
 
 void handleNotFound() {
-
+#if defined(EXPERIMENTAL)
+  if (captivePortal()) { // If caprive portal redirect instead of displaying the page.
+    return;
+  }
+#endif /* EXPERIMENTAL */
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -1130,7 +1296,14 @@ void handleNotFound() {
 
 void Web_setup()
 {
+#if defined(EXPERIMENTAL)
   server.on ( "/", handleRoot );
+//  server.on ( "/generate_204", handleRoot); // Android captive portal.
+  server.on ( "/fwlink", handleRoot);       // Microsoft captive portal.
+  server.on ( "/status", handleStatus );
+#else
+  server.on ( "/", handleStatus );
+#endif /* EXPERIMENTAL */
   server.on ( "/settings", handleSettings );
   server.on ( "/about", []() {
     SoC->swSer_enableRx(false);
@@ -1140,7 +1313,26 @@ void Web_setup()
     server.send_P ( 200, PSTR("text/html"), about_html);
     SoC->swSer_enableRx(true);
   } );
-
+#if defined(EXPERIMENTAL)
+  server.on ( "/service", []() {
+    SoC->swSer_enableRx(false);
+    server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
+    server.sendHeader(String(F("Pragma")), String(F("no-cache")));
+    server.sendHeader(String(F("Expires")), String(F("-1")));
+    server.send_P ( 200, PSTR("text/html"), service_html);
+    SoC->swSer_enableRx(true);
+    SoC->Service_Mode(true);
+  } );
+  server.on ( "/leave", []() {
+    SoC->swSer_enableRx(false);
+    server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
+    server.sendHeader(String(F("Pragma")), String(F("no-cache")));
+    server.sendHeader(String(F("Expires")), String(F("-1")));
+    server.send_P ( 200, PSTR("text/html"), leave_html);
+    SoC->swSer_enableRx(true);
+    SoC->Service_Mode(false);
+  } );
+#endif /* EXPERIMENTAL */
   server.on ( "/input", handleInput );
   server.on ( "/inline", []() {
     server.send ( 200, "text/plain", "this works as well" );
@@ -1160,6 +1352,7 @@ void Web_setup()
 <body>\
 <body>\
  <h1 align=center>Firmware update</h1>\
+ <!--<p align=center>(main board)</p>-->\
  <hr>\
  <table width=100%%>\
   <tr>\
@@ -1202,6 +1395,9 @@ $('form').submit(function(e){\
     </td>\
   </tr>\
  </table>\
+<!--<hr>\
+ <h1 align=center>Radio/GNSS board</h1>\
+ <p align=center><input type=button onClick=\"location.href='/service'\" value='Service Mode'></p>-->\
 </body>\
 </html>")
     );
@@ -1223,7 +1419,7 @@ $('form').submit(function(e){\
       Serial.setDebugOutput(true);
       SoC->WiFiUDP_stopAll();
       SoC->WDT_fini();
-      Serial.printf("Update: %s\n", upload.filename.c_str());
+      Serial.printf("Update: %s\r\n", upload.filename.c_str());
       uint32_t maxSketchSpace = SoC->maxSketchSpace();
       if(!Update.begin(maxSketchSpace)){//start with max available size
         Update.printError(Serial);
@@ -1234,7 +1430,7 @@ $('form').submit(function(e){\
       }
     } else if(upload.status == UPLOAD_FILE_END){
       if(Update.end(true)){ //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        Serial.printf("Update Success: %u\r\nRebooting...\r\n", upload.totalSize);
       } else {
         Update.printError(Serial);
       }
@@ -1243,9 +1439,11 @@ $('form').submit(function(e){\
     yield();
   });
 
+#if !defined(NOLOGO)
   server.on ( "/logo.png", []() {
     server.send_P ( 200, "image/png", Logo, sizeof(Logo) );
   } );
+#endif
 
   server.on ( "/jquery.min.js", []() {
 

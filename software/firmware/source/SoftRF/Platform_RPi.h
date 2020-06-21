@@ -1,6 +1,6 @@
 /*
  * Platform_RPi.h
- * Copyright (C) 2018-2019 Linar Yusupov
+ * Copyright (C) 2018-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,11 +24,14 @@
 /* Maximum of tracked flying objects is now SoC-specific constant */
 #define MAX_TRACKING_OBJECTS  8
 
+#define DEFAULT_SOFTRF_MODEL    SOFTRF_MODEL_RASPBERRY
+
 //#include <raspi/HardwareSerial.h>
 #include <raspi/TTYSerial.h>
 
 #include "JSONHelper.h"
 
+#define SerialOutput          Serial
 #define swSer                 Serial1
 #define UATSerial             Serial2
 
@@ -64,6 +67,7 @@
 #define SOC_GPIO_PIN_MODE_PULLDOWN INPUT
 #define SOC_GPIO_PIN_GNSS_PPS SOC_UNUSED_PIN
 #define SOC_GPIO_PIN_LED      SOC_UNUSED_PIN
+#define SOC_GPIO_PIN_STATUS   SOC_UNUSED_PIN
 
 #if defined(USE_SPI1)
 #define JSON_SRV_TCP_PORT     30008
@@ -74,7 +78,17 @@
 extern TTYSerial Serial1;
 extern TTYSerial Serial2;
 
+#define EXCLUDE_WIFI
+#define EXCLUDE_LED_RING
+#define EXCLUDE_EEPROM
+#define EXCLUDE_CC13XX
+
 #define USE_NMEALIB
+
+#define EXCLUDE_BMP180
+#define EXCLUDE_BMP280
+#define EXCLUDE_MPL3115A2
+#define EXCLUDE_MAVLINK
 
 //#define USE_OGN_RF_DRIVER
 //#define WITH_RFM95

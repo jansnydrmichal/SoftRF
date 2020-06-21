@@ -1,6 +1,6 @@
 /*
  * View_Radar_EPD.cpp
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -87,6 +87,11 @@ static void EPD_Draw_NavBoxes()
                    navbox2.value == PROTOCOL_GDL90 ? " GDL" : " UNK" );
   }
   while (display->nextPage());
+
+  yield();
+
+  /* Poll input source */
+  Input_loop();
 
   uint16_t bottom_navboxes_x = navbox3.x;
   uint16_t bottom_navboxes_y = navbox3.y;
@@ -260,6 +265,9 @@ static void EPD_Draw_Radar()
         int16_t rel_y;
         float distance;
         float bearing;
+
+        bool isTeam = (Container[i].ID == settings->team) ;
+
 #if 0
         Serial.print(F(" ID="));
         Serial.print((Container[i].ID >> 16) & 0xFF, HEX);
@@ -303,19 +311,50 @@ static void EPD_Draw_Radar()
         int16_t y = ((int32_t) rel_y * (int32_t) radius) / divider;
 
         if        (Container[i].RelativeVertical >   EPD_RADAR_V_THRESHOLD) {
-          display->fillTriangle(radar_center_x + x - 4, radar_center_y - y + 3,
-                                radar_center_x + x    , radar_center_y - y - 5,
-                                radar_center_x + x + 4, radar_center_y - y + 3,
-                                GxEPD_BLACK);
+          if (isTeam) {
+            display->drawTriangle(radar_center_x + x - 5, radar_center_y - y + 4,
+                                  radar_center_x + x    , radar_center_y - y - 6,
+                                  radar_center_x + x + 5, radar_center_y - y + 4,
+                                  GxEPD_BLACK);
+            display->drawTriangle(radar_center_x + x - 6, radar_center_y - y + 5,
+                                  radar_center_x + x    , radar_center_y - y - 7,
+                                  radar_center_x + x + 6, radar_center_y - y + 5,
+                                  GxEPD_BLACK);
+          } else {
+            display->fillTriangle(radar_center_x + x - 4, radar_center_y - y + 3,
+                                  radar_center_x + x    , radar_center_y - y - 5,
+                                  radar_center_x + x + 4, radar_center_y - y + 3,
+                                  GxEPD_BLACK);
+          }
         } else if (Container[i].RelativeVertical < - EPD_RADAR_V_THRESHOLD) {
-          display->fillTriangle(radar_center_x + x - 4, radar_center_y - y - 3,
-                                radar_center_x + x    , radar_center_y - y + 5,
-                                radar_center_x + x + 4, radar_center_y - y - 3,
-                                GxEPD_BLACK);
+          if (isTeam) {
+            display->drawTriangle(radar_center_x + x - 5, radar_center_y - y - 4,
+                                  radar_center_x + x    , radar_center_y - y + 6,
+                                  radar_center_x + x + 5, radar_center_y - y - 4,
+                                  GxEPD_BLACK);
+            display->drawTriangle(radar_center_x + x - 6, radar_center_y - y - 5,
+                                  radar_center_x + x    , radar_center_y - y + 7,
+                                  radar_center_x + x + 6, radar_center_y - y - 5,
+                                  GxEPD_BLACK);
+          } else {
+            display->fillTriangle(radar_center_x + x - 4, radar_center_y - y - 3,
+                                  radar_center_x + x    , radar_center_y - y + 5,
+                                  radar_center_x + x + 4, radar_center_y - y - 3,
+                                  GxEPD_BLACK);
+          }
         } else {
-          display->fillCircle(radar_center_x + x,
-                              radar_center_y - y,
-                              5, GxEPD_BLACK);
+          if (isTeam) {
+            display->drawCircle(radar_center_x + x,
+                                radar_center_y - y,
+                                6, GxEPD_BLACK);
+            display->drawCircle(radar_center_x + x,
+                                radar_center_y - y,
+                                7, GxEPD_BLACK);
+           } else {
+            display->fillCircle(radar_center_x + x,
+                                radar_center_y - y,
+                                5, GxEPD_BLACK);
+          }
         }
       }
     }
@@ -552,6 +591,9 @@ void EPD_radar_loop()
     EPD_Clear_Screen();
 
     yield();
+
+    /* Poll input source(s) */
+    Input_loop();
 
     EPD_Draw_NavBoxes();
 

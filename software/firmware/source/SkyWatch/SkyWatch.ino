@@ -1,6 +1,6 @@
 /*
  * SkyWatch(.ino) firmware
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This firmware is essential part of the SoftRF project.
  *
@@ -45,25 +45,60 @@
 #include "TFTHelper.h"
 #include "BaroHelper.h"
 
-#include "SkyWatch.h"
-
 ufo_t ThisDevice;
 hardware_info_t hw_info = {
-  .model    = SOFTRF_MODEL_SKYWATCH,
+  .model    = SOFTRF_MODEL_WEBTOP,
   .revision = HW_REV_UNKNOWN,
   .soc      = SOC_NONE,
   .rf       = RF_IC_NONE,
   .gnss     = GNSS_MODULE_NONE,
   .baro     = BARO_MODULE_NONE,
-  .display  = DISPLAY_NONE
+  .display  = DISPLAY_NONE,
+  .storage  = STORAGE_NONE
 };
+
+#if DEBUG_POWER
+#include <axp20x.h>
+extern AXP20X_Class axp;
+
+void print_current(const char *s, bool d)
+{
+  char buf[128];
+
+  float vbus_cur = axp.getVbusCurrent();
+  float batt_cur = axp.isChargeing() ?
+    axp.getBattChargeCurrent() : axp.getBattDischargeCurrent();
+
+  if (d) { delay(1000); }
+
+  Serial.println();
+  Serial.println(s);
+  snprintf(buf, sizeof(buf), "%.2f", vbus_cur);
+  Serial.print(F("Vbus current: ")); Serial.println(buf);
+  snprintf(buf, sizeof(buf), "%.2f", batt_cur);
+  Serial.print(F("Battery current: ")); Serial.println(buf);
+  Serial.println();
+}
+#endif
+
+bool inServiceMode = false;
 
 void setup()
 {
   hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
 
   delay(300);
-  Serial.begin(38400); Serial.println();
+  Serial.begin(SERIAL_OUT_BR, SERIAL_OUT_BITS);
+  Serial.println();
+
+  Serial.println();
+  Serial.print(hw_info.model == SOFTRF_MODEL_SKYWATCH ?
+                                F(SKYWATCH_IDENT "-") : F(SOFTRF_IDENT "-"));
+  Serial.print(SoC->name);
+  Serial.print(F(" FW.REV: " SKYWATCH_FIRMWARE_VERSION " DEV.ID: "));
+  Serial.println(String(SoC->getChipId(), HEX));
+  Serial.println(F("Copyright (C) 2019-2020 Linar Yusupov. All rights reserved."));
+  Serial.flush();
 
   EEPROM_setup();
 
@@ -86,6 +121,15 @@ void setup()
      SoC->Bluetooth->setup();
   }
 
+  if (SoC->DB_init()) {
+    hw_info.storage = STORAGE_uSD;
+  }
+
+  Web_setup();
+  Traffic_setup();
+
+  Serial.flush();
+
   switch (settings->m.protocol)
   {
   case PROTOCOL_GDL90:
@@ -97,15 +141,22 @@ void setup()
     break;
   }
 
-  SoC->DB_init();
-
-  Web_setup();
-  Traffic_setup();
-
   SoC->WDT_setup();
 }
 
 void loop()
+{
+#if defined(EXPERIMENTAL)
+  if (inServiceMode) {
+    service_loop();
+  } else
+#endif /* EXPERIMENTAL */
+  {
+    normal_loop();
+  }
+}
+
+void normal_loop()
 {
   Baro_loop();
 
@@ -143,6 +194,38 @@ void loop()
 
   yield();
 }
+
+#if defined(EXPERIMENTAL)
+void service_loop()
+{
+  bool bypass_inactive = true;
+
+  while (Serial.available() > 0) {
+    SerialInput.write(Serial.read());
+    bypass_inactive = false;
+  }
+  while (SerialInput.available() > 0) {
+    Serial.write(SerialInput.read());
+    bypass_inactive = false;
+  }
+  if (bypass_inactive) {
+//    TFT_loop();
+
+//    Traffic_ClearExpired();
+
+//    WiFi_loop();
+
+    // Handle Web
+//    Web_loop();
+
+    SoC->Button_loop();
+
+    SoC->loop();
+
+//    Battery_loop();
+  }
+}
+#endif /* EXPERIMENTAL */
 
 void shutdown(const char *msg)
 {

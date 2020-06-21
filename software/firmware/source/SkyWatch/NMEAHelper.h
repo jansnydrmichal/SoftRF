@@ -1,6 +1,6 @@
 /*
  * NMEAHelper.h
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -132,6 +132,7 @@ bool NMEA_Save_Settings(void);
 bool NMEA_isConnected(void);
 bool NMEA_hasGNSS(void);
 bool NMEA_hasFLARM(void);
+bool NMEA_has3DFix(void);
 void NMEA_Out(byte *, size_t, bool);
 void NMEA_fini();
 

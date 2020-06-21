@@ -1,6 +1,6 @@
 /*
  * Platform_ESP32.h
- * Copyright (C) 2019 Linar Yusupov
+ * Copyright (C) 2019-2020 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <SPIFFS.h>
+#include <pcf8563.h>
+#include <bma.h>
 
 /* Maximum of tracked flying objects is now SoC-specific constant */
 #define MAX_TRACKING_OBJECTS            9
@@ -59,18 +61,29 @@
 #define BACKLIGHT_CHANNEL               ((uint8_t)1)
 
 /* 1st I2C bus on the T-Watch */
+#define SOC_GPIO_PIN_TWATCH_EXT_SDA     25
+#define SOC_GPIO_PIN_TWATCH_EXT_SCL     26
+
+/* 2nd I2C bus on the T-Watch */
 #define SOC_GPIO_PIN_TWATCH_SEN_SDA     21
 #define SOC_GPIO_PIN_TWATCH_SEN_SCL     22
 
-/* 2nd I2C bus on the T-Watch */
-#define SOC_GPIO_PIN_TWATCH_EXT_SDA     25
-#define SOC_GPIO_PIN_TWATCH_EXT_SCL     26
+/* touchscreen */
+#define SOC_GPIO_PIN_TWATCH_TP_SDA      23
+#define SOC_GPIO_PIN_TWATCH_TP_SCL      32
+#define SOC_GPIO_PIN_TWATCH_TP_IRQ      38
 
 /* microSD */
 #define SOC_GPIO_PIN_TWATCH_SD_MOSI     15
 #define SOC_GPIO_PIN_TWATCH_SD_MISO     2
 #define SOC_GPIO_PIN_TWATCH_SD_SCK      14
 #define SOC_GPIO_PIN_TWATCH_SD_SS       13
+
+// RTC
+#define SOC_GPIO_PIN_TWATCH_RTC_IRQ     37
+
+// BMA423
+#define SOC_GPIO_PIN_TWATCH_BMA_IRQ     39
 
 /* TBD */
 #define SOC_GPIO_PIN_BCLK               26
@@ -108,8 +121,19 @@ typedef struct wavProperties_s {
 extern bool loopTaskWDTEnabled;
 
 extern WebServer server;
+extern BMA *bma;
+extern portMUX_TYPE BMA_mutex;
+extern volatile bool BMA_Irq;
+extern PCF8563_Class *rtc;
 
 #define NMEA_TCP_SERVICE
+//#define USE_DNS_SERVER
+
+#define POWER_SAVING_WIFI_TIMEOUT 300000UL /* 5 minutes */
+
+#define DEBUG_POWER 0
+
+#define EB_S76G_1_3
 
 #endif /* PLATFORM_ESP32_H */
 
