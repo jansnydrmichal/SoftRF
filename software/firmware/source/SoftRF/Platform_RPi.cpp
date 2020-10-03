@@ -61,6 +61,7 @@
 #include "WiFiHelper.h"
 #include "EPDHelper.h"
 #include "BatteryHelper.h"
+#include "BluetoothHelper.h"
 
 #include "TCPServer.h"
 
@@ -292,7 +293,7 @@ static byte RPi_Display_setup()
 {
   byte rval = DISPLAY_NONE;
 
-  if (EPD_setup()) {
+  if (EPD_setup(true)) {
     rval = DISPLAY_EPD_2_7;
   }
 
@@ -395,6 +396,7 @@ const SoC_ops_t RPi_ops = {
   NULL,
   RPi_SPI_begin,
   RPi_swSer_begin,
+  NULL,
   NULL,
   NULL,
   RPi_Display_setup,

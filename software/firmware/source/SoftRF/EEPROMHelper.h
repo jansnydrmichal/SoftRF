@@ -22,11 +22,15 @@
 #include "SoCHelper.h"
 
 #if !defined(EXCLUDE_EEPROM)
+#if defined(ENERGIA_ARCH_CC13XX) || defined(ENERGIA_ARCH_CC13X2)
+#include <EEPROM_CC13XX.h>
+#else
 #include <EEPROM.h>
+#endif /* CC13XX or CC13X2 */
 #endif /* EXCLUDE_EEPROM */
 
-#define SOFTRF_EEPROM_MAGIC 0xBABADEDA
-#define SOFTRF_EEPROM_VERSION 0x0000005D
+#define SOFTRF_EEPROM_MAGIC   0xBABADEDA
+#define SOFTRF_EEPROM_VERSION 0x0000005F
 
 typedef struct Settings {
     uint8_t  mode;
@@ -67,7 +71,7 @@ typedef struct Settings {
     uint8_t  resvd14;
     uint8_t  resvd15;
     uint8_t  resvd16;
-} settings_t;
+} __attribute__((packed)) settings_t;
 
 typedef struct EEPROM_S {
     uint32_t  magic;

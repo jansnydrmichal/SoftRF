@@ -31,7 +31,7 @@
 #include <raspi/raspi.h>
 #endif /* RASPBERRY_PI */
 
-#define SOFTRF_FIRMWARE_VERSION "1.0-rc7"
+#define SOFTRF_FIRMWARE_VERSION "1.0-rc8"
 #define SOFTRF_IDENT            "SoftRF-"
 
 #define ENTRY_EXPIRATION_TIME   10 /* seconds */
@@ -157,6 +157,16 @@ typedef struct hardware_info {
 #endif /* ENABLE_AHRS */
 } hardware_info_t;
 
+typedef struct IODev_ops_struct {
+  const char name[16];
+  void (*setup)();
+  void (*loop)();
+  void (*fini)();
+  int (*available)(void);
+  int (*read)(void);
+  size_t (*write)(const uint8_t *buffer, size_t size);
+} IODev_ops_t;
+
 enum
 {
 	SOFTRF_MODE_NORMAL,
@@ -182,7 +192,9 @@ enum
 	SOFTRF_MODEL_SKYWATCH,
 	SOFTRF_MODEL_DONGLE,
 	SOFTRF_MODEL_MULTI,
-	SOFTRF_MODEL_UNI
+	SOFTRF_MODEL_UNI,
+	SOFTRF_MODEL_MINI,
+	SOFTRF_MODEL_BADGE
 };
 
 extern ufo_t ThisAircraft;

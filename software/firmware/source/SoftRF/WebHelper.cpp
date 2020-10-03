@@ -93,7 +93,7 @@ static const char about_html[] PROGMEM = "<html>\
 <tr><th align=left>Phil Burgess</th><td align=left>Adafruit NeoPixel Library</td></tr>\
 <tr><th align=left>Andy Little</th><td align=left>Aircraft and MAVLink Libraries</td></tr>\
 <tr><th align=left>Peter Knight</th><td align=left>TrueRandom Library</td></tr>\
-<tr><th align=left>Matthijs Kooijman</th><td align=left>IBM LMIC framework for Arduino</td></tr>\
+<tr><th align=left>Matthijs Kooijman</th><td align=left>IBM LMIC and Semtech Basic MAC frameworks for Arduino</td></tr>\
 <tr><th align=left>David Paiva</th><td align=left>ESP8266FtpServer</td></tr>\
 <tr><th align=left>Lammert Bies</th><td align=left>Lib_crc</td></tr>\
 <tr><th align=left>Pawel Jalocha</th><td align=left>OGN library</td></tr>\
@@ -118,6 +118,7 @@ static const char about_html[] PROGMEM = "<html>\
 <tr><th align=left>Phil Karn</th><td align=left>FEC library</td></tr>\
 <tr><th align=left>Lewis He</th><td align=left>AXP20X library</td></tr>\
 <tr><th align=left>Bodmer</th><td align=left>TFT library</td></tr>\
+<tr><th align=left>Michael Kuyper</th><td align=left>Basic MAC library</td></tr>\
 </table>\
 <hr>\
 Copyright (C) 2015-2020 &nbsp;&nbsp;&nbsp; Linar Yusupov\
@@ -126,7 +127,7 @@ Copyright (C) 2015-2020 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 
 void handleSettings() {
 
-  size_t size = 4860;
+  size_t size = 5020;
   char *offset;
   size_t len = 0;
   char *Settings_temp = (char *) malloc(size);
@@ -228,6 +229,8 @@ void handleSettings() {
 <option %s value='%d'>UK (869.52 MHz)</option>\
 <option %s value='%d'>AU (921 MHz)</option>\
 <option %s value='%d'>IN (866 MHz)</option>\
+<option %s value='%d'>KR (920.9 MHz)</option>\
+<option %s value='%d'>IL (916.2 MHz)</option>\
 </select>\
 </td>\
 </tr>\
@@ -296,6 +299,8 @@ void handleSettings() {
   (settings->band == RF_BAND_UK ? "selected" : ""), RF_BAND_UK,
   (settings->band == RF_BAND_AU ? "selected" : ""), RF_BAND_AU,
   (settings->band == RF_BAND_IN ? "selected" : ""), RF_BAND_IN,
+  (settings->band == RF_BAND_KR ? "selected" : ""), RF_BAND_KR,
+  (settings->band == RF_BAND_IL ? "selected" : ""), RF_BAND_IL,
   (settings->aircraft_type == AIRCRAFT_TYPE_GLIDER ? "selected" : ""),  AIRCRAFT_TYPE_GLIDER,
   (settings->aircraft_type == AIRCRAFT_TYPE_TOWPLANE ? "selected" : ""),  AIRCRAFT_TYPE_TOWPLANE,
   (settings->aircraft_type == AIRCRAFT_TYPE_POWERED ? "selected" : ""),  AIRCRAFT_TYPE_POWERED,
@@ -490,6 +495,7 @@ void handleSettings() {
 <select name='power_save'>\
 <option %s value='%d'>Disabled</option>\
 <option %s value='%d'>WiFi OFF (10 min.)</option>\
+<option %s value='%d'>GNSS</option>\
 </select>\
 </td>\
 </tr>\
@@ -509,6 +515,7 @@ void handleSettings() {
 </tr>"),
   (settings->power_save == POWER_SAVE_NONE ? "selected" : ""), POWER_SAVE_NONE,
   (settings->power_save == POWER_SAVE_WIFI ? "selected" : ""), POWER_SAVE_WIFI,
+  (settings->power_save == POWER_SAVE_GNSS ? "selected" : ""), POWER_SAVE_GNSS,
   (!settings->stealth ? "checked" : "") , (settings->stealth ? "checked" : ""),
   (!settings->no_track ? "checked" : "") , (settings->no_track ? "checked" : "")
   );

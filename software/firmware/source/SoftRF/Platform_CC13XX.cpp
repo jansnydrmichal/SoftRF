@@ -23,19 +23,6 @@
 #include <ti/drivers/Watchdog.h>
 #include <xdc/runtime/Memory.h>
 
-#if defined(ENERGIA_ARCH_CC13XX)
-#include <ti/devices/cc13x0/driverlib/sys_ctrl.h>
-#include <ti/devices/cc13x0/driverlib/aon_batmon.h>
-#include <SCSerial.h>
-#endif /* ENERGIA_ARCH_CC13XX */
-#if defined(ENERGIA_ARCH_CC13X2)
-#include <ti/devices/cc13x2_cc26x2/driverlib/sys_ctrl.h>
-#include <ti/devices/cc13x2_cc26x2/driverlib/aon_batmon.h>
-
-#include <SPIFlash.h>
-#include <ADXL362.h>
-#endif /* ENERGIA_ARCH_CC13X2 */
-
 #include "SoCHelper.h"
 #include "RFHelper.h"
 #include "LEDHelper.h"
@@ -43,6 +30,24 @@
 #include "BaroHelper.h"
 
 #include "EasyLink.h"
+
+#if defined(ASSERT)
+#undef ASSERT
+#endif
+
+#if defined(ENERGIA_ARCH_CC13XX)
+#include <ti/devices/cc13x0/driverlib/sys_ctrl.h>
+#include <ti/devices/cc13x0/driverlib/aon_batmon.h>
+#include <SCSerial.h>
+#endif /* ENERGIA_ARCH_CC13XX */
+
+#if defined(ENERGIA_ARCH_CC13X2)
+#include <ti/devices/cc13x2_cc26x2/driverlib/sys_ctrl.h>
+#include <ti/devices/cc13x2_cc26x2/driverlib/aon_batmon.h>
+
+#include <SPIFlash.h>
+#include <ADXL362.h>
+#endif /* ENERGIA_ARCH_CC13X2 */
 
 #if !defined(EXCLUDE_SX12XX)
 // RFM95W pin mapping
@@ -163,13 +168,17 @@ static void BootManagerCheck(void)
   bool revertIoInit;
   uint8_t CurrentLed;
 
+  uint32_t addr = (uint32_t) &_imgHdr;
+
+  if (addr) return;
+
   // Check if button is held on reset
   revertIoInit = (digitalRead(PUSH1) == LOW);
 
   uint8_t leds[] = {RED_LED, GREEN_LED, SOC_GPIO_PIN_LED_BLUE};
   uint8_t LED_count = (cc13xx_board == TI_LPSTK_CC1352R ? 3 : 2);
 
-  if (&_imgHdr == NULL && revertIoInit)
+  if (revertIoInit)
   {
     Serial.println(F("Left button was held on reset."));
     Serial.println(F("Continue holding for 5 seconds to revert to factory image."));
@@ -370,6 +379,18 @@ static void CC13XX_loop()
 #endif /* ENERGIA_ARCH_CC13X2 */
 }
 
+#if defined(USE_SERIAL_DEEP_SLEEP)
+
+#include <ti/drivers/PIN.h>
+#include <ti/drivers/pin/PINCC26XX.h>
+
+/* Wake-up UART0 pin table */
+PIN_Config UART0_TableWakeUp[] = {
+    IOID_12 | PIN_INPUT_EN | PIN_PULLUP | PINCC26XX_WAKEUP_NEGEDGE,
+    PIN_TERMINATE                         /* Terminate list */
+};
+#endif
+
 static void CC13XX_fini()
 {
   // Disable battery monitoring
@@ -389,6 +410,13 @@ static void CC13XX_fini()
   }
 
 #endif /* ENERGIA_ARCH_CC13X2 */
+
+#if defined(USE_SERIAL_DEEP_SLEEP)
+  Serial.end();
+
+  /* Configure DIO for wake up from shutdown */
+  PINCC26XX_setWakeup(UART0_TableWakeUp);
+#endif
 
   Power_shutdown(0, 0);
 }
@@ -568,9 +596,9 @@ static void CC13XX_Display_loop()
 
       u8x8->drawString(9, 5, "TX");
 
-      if (settings->mode != SOFTRF_MODE_BRIDGE ||
-          (settings->mode == SOFTRF_MODE_BRIDGE &&
-           settings->txpower == RF_TX_POWER_OFF)) {
+      if (settings->mode        == SOFTRF_MODE_RECEIVER ||
+          settings->rf_protocol == RF_PROTOCOL_ADSB_UAT ||
+          settings->txpower     == RF_TX_POWER_OFF) {
         strcpy(buf, "OFF");
       } else {
         itoa(tx_packets_counter % 1000, buf, 10);
@@ -770,6 +798,7 @@ const SoC_ops_t CC13XX_ops = {
   CC13XX_swSer_begin,
   CC13XX_swSer_enableRx,
   NULL,
+  NULL, /* CC13XX has no built-in USB */
   CC13XX_Display_setup,
   CC13XX_Display_loop,
   CC13XX_Display_fini,

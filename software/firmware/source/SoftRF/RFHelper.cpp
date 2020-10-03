@@ -35,10 +35,10 @@
 #include "LogHelper.h"
 #endif /* LOGGER_IS_ENABLED */
 
-byte RxBuffer[MAX_PKT_SIZE];
+byte RxBuffer[MAX_PKT_SIZE] __attribute__((aligned(sizeof(uint32_t))));
 
 unsigned long TxTimeMarker = 0;
-byte TxBuffer[MAX_PKT_SIZE];
+byte TxBuffer[MAX_PKT_SIZE] __attribute__((aligned(sizeof(uint32_t))));
 
 uint32_t tx_packets_counter = 0;
 uint32_t rx_packets_counter = 0;
@@ -52,7 +52,7 @@ static size_t RF_tx_size = 0;
 static long TxRandomValue = 0;
 
 const rfchip_ops_t *rf_chip = NULL;
-bool RF_SX1276_RST_is_connected = true;
+bool RF_SX12XX_RST_is_connected = true;
 
 size_t (*protocol_encode)(void *, ufo_t *);
 bool (*protocol_decode)(void *, ufo_t *, ufo_t *);
@@ -584,8 +584,12 @@ static bool nrf905_receive()
     rx_packets_counter++;
   }
 
-  if (SoC->Bluetooth) {
-    SoC->Bluetooth->loop();
+  if (SoC->Bluetooth_ops) {
+    SoC->Bluetooth_ops->loop();
+  }
+
+  if (SoC->USB_ops) {
+    SoC->USB_ops->loop();
   }
 
   return success;
@@ -689,7 +693,7 @@ static bool sx1276_probe()
   if (v == 0x12) {
 
     if (v_reset == 0x12) {
-      RF_SX1276_RST_is_connected = false;
+      RF_SX12XX_RST_is_connected = false;
     }
 
     return true;
@@ -749,7 +753,7 @@ static bool sx1262_probe()
   if (v == SX126X_DEF_LORASYNCWORDLSB || v == fanet_sw_lsb) {
 
     if (v_reset == SX126X_DEF_LORASYNCWORDLSB || v == fanet_sw_lsb) {
-      RF_SX1276_RST_is_connected = false;
+      RF_SX12XX_RST_is_connected = false;
     }
 
     return true;
@@ -914,8 +918,12 @@ static bool sx12xx_receive()
     os_runstep();
   };
 
-  if (SoC->Bluetooth) {
-    SoC->Bluetooth->loop();
+  if (SoC->Bluetooth_ops) {
+    SoC->Bluetooth_ops->loop();
+  }
+
+  if (SoC->USB_ops) {
+    SoC->USB_ops->loop();
   }
 
   if (sx12xx_receive_complete == true) {
@@ -2085,8 +2093,12 @@ static bool ognrf_receive()
 
 #endif /* WITH_SI4X32 */
 
-  if (SoC->Bluetooth) {
-    SoC->Bluetooth->loop();
+  if (SoC->Bluetooth_ops) {
+    SoC->Bluetooth_ops->loop();
+  }
+
+  if (SoC->USB_ops) {
+    SoC->USB_ops->loop();
   }
 
   return success;

@@ -189,7 +189,7 @@ void handleRoot() {
 
 void handleSettings() {
 
-  size_t size = 7000;
+  size_t size = 7160;
   char *offset;
   size_t len = 0;
   char *Settings_temp = (char *) malloc(size);
@@ -210,16 +210,7 @@ void handleSettings() {
 <body>\
 <h1 align=center>Settings</h1>\
 <form action='/input' method='GET'>\
-<table width=100%%>"));
-
-  len = strlen(offset);
-  offset += len;
-  size -= len;
-
-  if (hw_info.model == SOFTRF_MODEL_WEBTOP) {
-    /* SoC specific part 6 */
-    snprintf_P ( offset, size,
-      PSTR("\
+<table width=100%%>\
 <tr>\
 <th align=left>Connection port</th>\
 <td align=right>\
@@ -249,44 +240,43 @@ void handleSettings() {
 <option %s value='%d'>19200</option>\
 <option %s value='%d'>38400</option>\
 <option %s value='%d'>57600</option>"),
-    (settings->m.connection == CON_SERIAL_MAIN  ? "selected" : ""), CON_SERIAL_MAIN,
-    (settings->m.connection == CON_SERIAL_AUX   ? "selected" : ""), CON_SERIAL_AUX,
-    (settings->m.connection == CON_WIFI_UDP     ? "selected" : ""), CON_WIFI_UDP,
-    (settings->m.connection == CON_BLUETOOTH    ? "selected" : ""), CON_BLUETOOTH,
-    (settings->m.protocol   == PROTOCOL_NMEA    ? "selected" : ""), PROTOCOL_NMEA,
-    (settings->m.protocol   == PROTOCOL_GDL90   ? "selected" : ""), PROTOCOL_GDL90,
-    (settings->m.baudrate   == B4800            ? "selected" : ""), B4800,
-    (settings->m.baudrate   == B9600            ? "selected" : ""), B9600,
-    (settings->m.baudrate   == B19200           ? "selected" : ""), B19200,
-    (settings->m.baudrate   == B38400           ? "selected" : ""), B38400,
-    (settings->m.baudrate   == B57600           ? "selected" : ""), B57600
-    );
+  (settings->m.connection == CON_SERIAL_MAIN  ? "selected" : ""), CON_SERIAL_MAIN,
+  (settings->m.connection == CON_SERIAL_AUX   ? "selected" : ""), CON_SERIAL_AUX,
+  (settings->m.connection == CON_WIFI_UDP     ? "selected" : ""), CON_WIFI_UDP,
+  (settings->m.connection == CON_BLUETOOTH    ? "selected" : ""), CON_BLUETOOTH,
+  (settings->m.protocol   == PROTOCOL_NMEA    ? "selected" : ""), PROTOCOL_NMEA,
+  (settings->m.protocol   == PROTOCOL_GDL90   ? "selected" : ""), PROTOCOL_GDL90,
+  (settings->m.baudrate   == B4800            ? "selected" : ""), B4800,
+  (settings->m.baudrate   == B9600            ? "selected" : ""), B9600,
+  (settings->m.baudrate   == B19200           ? "selected" : ""), B19200,
+  (settings->m.baudrate   == B38400           ? "selected" : ""), B38400,
+  (settings->m.baudrate   == B57600           ? "selected" : ""), B57600
+  );
 
-    len = strlen(offset);
-    offset += len;
-    size -= len;
+  len = strlen(offset);
+  offset += len;
+  size -= len;
 
-    /* SoC specific part 7 */
-    if (SoC->id == SOC_ESP32) {
-      snprintf_P ( offset, size,
-        PSTR("\
+  /* SoC specific part 1 */
+  if (SoC->id == SOC_ESP32) {
+    snprintf_P ( offset, size,
+      PSTR("\
 <option %s value='%d'>115200</option>\
 <option %s value='%d'>2000000</option>"),
-      (settings->m.baudrate   == B115200        ? "selected" : ""), B115200,
-      (settings->m.baudrate   == B2000000       ? "selected" : ""), B2000000
-      );
-      len = strlen(offset);
-      offset += len;
-      size -= len;
-    }
-
-    snprintf_P ( offset, size,
-      PSTR("</select></td></tr><tr><th>&nbsp;</th><td>&nbsp;</td></tr>"));
-
+    (settings->m.baudrate   == B115200        ? "selected" : ""), B115200,
+    (settings->m.baudrate   == B2000000       ? "selected" : ""), B2000000
+    );
     len = strlen(offset);
     offset += len;
     size -= len;
   }
+
+  snprintf_P ( offset, size,
+    PSTR("</select></td></tr><tr><th>&nbsp;</th><td>&nbsp;</td></tr>"));
+
+  len = strlen(offset);
+  offset += len;
+  size -= len;
 
 #if 0
   /* Common part 2 */
@@ -375,6 +365,8 @@ void handleSettings() {
 <option %s value='%d'>UK (869.52 MHz)</option>\
 <option %s value='%d'>AU (921 MHz)</option>\
 <option %s value='%d'>IN (866 MHz)</option>\
+<option %s value='%d'>KR (920.9 MHz)</option>\
+<option %s value='%d'>IL (916.2 MHz)</option>\
 </select>\
 </td>\
 </tr>\
@@ -443,6 +435,8 @@ void handleSettings() {
   (settings->s.band == RF_BAND_UK ? "selected" : ""), RF_BAND_UK,
   (settings->s.band == RF_BAND_AU ? "selected" : ""), RF_BAND_AU,
   (settings->s.band == RF_BAND_IN ? "selected" : ""), RF_BAND_IN,
+  (settings->s.band == RF_BAND_KR ? "selected" : ""), RF_BAND_KR,
+  (settings->s.band == RF_BAND_IL ? "selected" : ""), RF_BAND_IL,
   (settings->s.aircraft_type == AIRCRAFT_TYPE_GLIDER ? "selected" : ""),  AIRCRAFT_TYPE_GLIDER,
   (settings->s.aircraft_type == AIRCRAFT_TYPE_TOWPLANE ? "selected" : ""),  AIRCRAFT_TYPE_TOWPLANE,
   (settings->s.aircraft_type == AIRCRAFT_TYPE_POWERED ? "selected" : ""),  AIRCRAFT_TYPE_POWERED,
@@ -678,6 +672,7 @@ void handleSettings() {
 <select name='power_save'>\
 <option %s value='%d'>Disabled</option>\
 <option %s value='%d'>WiFi OFF (5 min.)</option>\
+<option %s value='%d'>GNSS</option>\
 </select>\
 </td>\
 </tr>\
@@ -697,6 +692,7 @@ void handleSettings() {
 </tr>"),
   (settings->s.power_save == POWER_SAVE_NONE ? "selected" : ""), POWER_SAVE_NONE,
   (settings->s.power_save == POWER_SAVE_WIFI ? "selected" : ""), POWER_SAVE_WIFI,
+  (settings->s.power_save == POWER_SAVE_GNSS ? "selected" : ""), POWER_SAVE_GNSS,
   (!settings->s.stealth ? "checked" : "") , (settings->s.stealth ? "checked" : ""),
   (!settings->s.no_track ? "checked" : "") , (settings->s.no_track ? "checked" : "")
   );
@@ -1071,10 +1067,11 @@ void handleStatus() {
         NMEA_hasFLARM()    ? "FLARM" : "",
         NMEA_has3DFix()    ? "3D" : "NONE",
         ThisDevice.addr,
-        ThisDevice.protocol == RF_PROTOCOL_LEGACY ? "Legacy" :
-        ThisDevice.protocol == RF_PROTOCOL_OGNTP  ? "OGNTP"  :
-        ThisDevice.protocol == RF_PROTOCOL_P3I    ? "P3I"    :
-        ThisDevice.protocol == RF_PROTOCOL_FANET  ? "FANET"  : "UNK",
+        ThisDevice.protocol == RF_PROTOCOL_LEGACY   ? "Legacy" :
+        ThisDevice.protocol == RF_PROTOCOL_OGNTP    ? "OGNTP"  :
+        ThisDevice.protocol == RF_PROTOCOL_P3I      ? "P3I"    :
+        ThisDevice.protocol == RF_PROTOCOL_ADSB_UAT ? "UAT"    :
+        ThisDevice.protocol == RF_PROTOCOL_FANET    ? "FANET"  : "UNK",
         tx_packets_counter, rx_packets_counter
       );
       break;

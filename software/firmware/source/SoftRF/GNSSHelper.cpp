@@ -76,10 +76,9 @@ const uint8_t setNav5[] PROGMEM = {0xFF, 0xFF, 0x07, 0x03, 0x00, 0x00, 0x00, 0x0
 const uint8_t CFG_RST[12]   PROGMEM = {0xb5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00,
                                        0x00, 0x01, 0x00, 0x0F, 0x66};
 
-const uint8_t RXM_PMREQ[16] PROGMEM = {0xb5, 0x62, 0x02, 0x41, 0x08, 0x00, 0x00,
-                                       0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-                                       0x4d, 0x3b};
-
+const uint8_t RXM_PMREQ_OFF[16] PROGMEM = {0xb5, 0x62, 0x02, 0x41, 0x08, 0x00,
+                                           0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                           0x00, 0x00, 0x4d, 0x3b};
 
 #if defined(USE_GNSS_PSM)
 static bool gnss_psm_active = false;
@@ -99,7 +98,10 @@ const char *GNSS_name[] = {
   [GNSS_MODULE_U8]      = "U8",
   [GNSS_MODULE_U9]      = "U9",
   [GNSS_MODULE_MAV]     = "MAV",
-  [GNSS_MODULE_S7XG]    = "S7XG"
+  [GNSS_MODULE_SONY]    = "SONY",
+  [GNSS_MODULE_AT65]    = "AT65",
+  [GNSS_MODULE_MTK]     = "MTK",
+  [GNSS_MODULE_GOKE]    = "GOKE"
 };
 
 #if defined(USE_NMEA_CFG)
@@ -128,6 +130,7 @@ TinyGPSCustom C_GDL90_Output (gnss, "PSRFC", 15);
 TinyGPSCustom C_D1090_Output (gnss, "PSRFC", 16);
 TinyGPSCustom C_Stealth      (gnss, "PSRFC", 17);
 TinyGPSCustom C_noTrack      (gnss, "PSRFC", 18);
+TinyGPSCustom C_PowerSave    (gnss, "PSRFC", 19);
 
 #endif /* USE_NMEA_CFG */
 
@@ -525,6 +528,13 @@ byte GNSS_setup() {
 
   SoC->swSer_begin(SERIAL_IN_BR);
 
+  if (hw_info.model == SOFTRF_MODEL_PRIME_MK2 ||
+      hw_info.model == SOFTRF_MODEL_UNI)        {
+
+    // power on by wakeup call
+    swSer.write((uint8_t) 0); swSer.flush(); delay(500);
+  }
+
   if (!GNSS_probe())
     return rval;
 
@@ -608,11 +618,11 @@ void GNSS_fini()
         swSer.write(pgm_read_byte(&CFG_RST[i]));
       }
 
-      delay(600);
+      delay(hw_info.gnss == GNSS_MODULE_U8 ? 1000 : 600);
 
       // power off until wakeup call
-      for (int i = 0; i < sizeof(RXM_PMREQ); i++) {
-        swSer.write(pgm_read_byte(&RXM_PMREQ[i]));
+      for (int i = 0; i < sizeof(RXM_PMREQ_OFF); i++) {
+        swSer.write(pgm_read_byte(&RXM_PMREQ_OFF[i]));
       }
     }
   }
@@ -648,7 +658,7 @@ void PickGNSSFix()
   int c = -1;
 
   /*
-   * Check SW, HW and BT UARTs for data
+   * Check SW/HW UARTs, USB and BT for data
    * WARNING! Make use only one input source at a time.
    */
   while (true) {
@@ -657,8 +667,8 @@ void PickGNSSFix()
       c = swSer.read();
     } else if (Serial.available() > 0) {
       c = Serial.read();
-    } else if (SoC->Bluetooth && SoC->Bluetooth->available() > 0) {
-      c = SoC->Bluetooth->read();
+    } else if (SoC->Bluetooth_ops && SoC->Bluetooth_ops->available() > 0) {
+      c = SoC->Bluetooth_ops->read();
 
       /*
        * Don't forget to disable echo:
@@ -678,8 +688,8 @@ void PickGNSSFix()
      */
 
     /* USB input is first */
-    if (SoC->Bluetooth && SoC->Bluetooth->available() > 0) {
-      c = SoC->Bluetooth->read();
+    if (SoC->USB_ops && SoC->USB_ops->available() > 0) {
+      c = SoC->USB_ops->read();
 
 #if 0
       /* This makes possible to configure S76x's built-in SONY GNSS from aside */
@@ -691,6 +701,13 @@ void PickGNSSFix()
     /* Serial input is second */
     } else if (SerialOutput.available() > 0) {
       c = SerialOutput.read();
+
+#if 0
+      /* This makes possible to configure HTCC-AB02S built-in GOKE GNSS from aside */
+      if (hw_info.model == SOFTRF_MODEL_MINI) {
+        swSer.write(c);
+      }
+#endif
 
     /* Built-in GNSS input */
     } else if (swSer.available() > 0) {
@@ -767,7 +784,6 @@ void PickGNSSFix()
       }
 #if defined(USE_NMEA_CFG)
       if (C_Version.isUpdated()) {
-#if 0
         if (strncmp(C_Version.value(), "RST", 3) == 0) {
             SoC->WDT_fini();
             Serial.println();
@@ -776,21 +792,20 @@ void PickGNSSFix()
             Serial.flush();
             RF_Shutdown();
             SoC->reset();
-        } else
-#endif
-        if (strncmp(C_Version.value(), "OFF", 3) == 0) {
+        } else if (strncmp(C_Version.value(), "OFF", 3) == 0) {
           shutdown("  OFF  ");
         } else if (strncmp(C_Version.value(), "?", 1) == 0) {
           char psrfc_buf[MAX_PSRFC_LEN];
 
           snprintf_P(psrfc_buf, sizeof(psrfc_buf),
-              PSTR("$PSRFC,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*"),
-              PSRFC_VERSION, settings->mode, settings->rf_protocol,
-              settings->band, settings->aircraft_type, settings->alarm,
-              settings->txpower, settings->volume,   settings->pointer,
-              settings->nmea_g,  settings->nmea_p,   settings->nmea_l,
-              settings->nmea_s,  settings->nmea_out, settings->gdl90,
-              settings->d1090,   settings->stealth,  settings->no_track );
+              PSTR("$PSRFC,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*"),
+              PSRFC_VERSION,        settings->mode,     settings->rf_protocol,
+              settings->band,       settings->aircraft_type, settings->alarm,
+              settings->txpower,    settings->volume,   settings->pointer,
+              settings->nmea_g,     settings->nmea_p,   settings->nmea_l,
+              settings->nmea_s,     settings->nmea_out, settings->gdl90,
+              settings->d1090,      settings->stealth,  settings->no_track,
+              settings->power_save );
 
           NMEA_add_checksum(psrfc_buf, sizeof(psrfc_buf) - strlen(psrfc_buf));
           NMEA_Out((byte *) psrfc_buf, strlen(psrfc_buf), false);
@@ -898,6 +913,12 @@ void PickGNSSFix()
           {
             settings->no_track = atoi(C_noTrack.value());
             Serial.print(F("noTrack = ")); Serial.println(settings->no_track);
+            cfg_is_updated = true;
+          }
+          if (C_PowerSave.isUpdated())
+          {
+            settings->power_save = atoi(C_PowerSave.value());
+            Serial.print(F("PowerSave = ")); Serial.println(settings->power_save);
             cfg_is_updated = true;
           }
 
