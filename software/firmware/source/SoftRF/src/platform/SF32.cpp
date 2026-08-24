@@ -39,6 +39,10 @@
 //#include "../protocol/data/JSON.h"
 #include "../system/Time.h"
 
+#if defined(USE_OLED)
+#include "../driver/OLED.h"
+#endif /* USE_OLED */
+
 // RFM95W pin mapping
 lmic_pinmap lmic_pins = {
     .nss = LMIC_UNUSED_PIN,
@@ -215,12 +219,34 @@ static long SF32_random(long howsmall, long howBig)
 
 static void SF32_Sound_test(int var)
 {
+#if defined(USE_PWM_SOUND)
+  if (SOC_GPIO_PIN_BUZZER != SOC_UNUSED_PIN && settings->volume != BUZZER_OFF) {
+    pinMode(SOC_GPIO_PIN_BUZZER, OUTPUT);
 
+    tone(SOC_GPIO_PIN_BUZZER, 440,  500); // delay(500);
+    tone(SOC_GPIO_PIN_BUZZER, 640,  500); // delay(500);
+    tone(SOC_GPIO_PIN_BUZZER, 840,  500); // delay(500);
+    tone(SOC_GPIO_PIN_BUZZER, 1040, 500); // delay(600);
+
+    noTone(SOC_GPIO_PIN_BUZZER);
+    pinMode(SOC_GPIO_PIN_BUZZER, INPUT);
+  }
+#endif /* USE_PWM_SOUND */
 }
 
 static void SF32_Sound_tone(int hz, uint8_t volume)
 {
-
+#if defined(USE_PWM_SOUND)
+  if (SOC_GPIO_PIN_BUZZER != SOC_UNUSED_PIN && volume != BUZZER_OFF) {
+    if (hz > 0) {
+      pinMode(SOC_GPIO_PIN_BUZZER, OUTPUT);
+      tone(SOC_GPIO_PIN_BUZZER, hz, ALARM_TONE_MS);
+    } else {
+      noTone(SOC_GPIO_PIN_BUZZER);
+      pinMode(SOC_GPIO_PIN_BUZZER, INPUT);
+    }
+  }
+#endif /* USE_PWM_SOUND */
 }
 
 static void SF32_WiFi_set_param(int ndx, int value)
@@ -268,17 +294,51 @@ static void SF32_swSer_enableRx(boolean arg)
 
 static byte SF32_Display_setup()
 {
-  return 0;
+  byte rval = DISPLAY_NONE;
+
+  if (SF32_board == SF32_LB52_DEVKIT) {
+#if defined(USE_OLED)
+    rval = OLED_setup();
+#endif /* USE_OLED */
+  }
+
+  return rval;
 }
 
 static void SF32_Display_loop()
 {
+  switch (hw_info.display)
+  {
+#if defined(USE_OLED)
+  case DISPLAY_OLED_1_3:
+  case DISPLAY_OLED_TTGO:
+  case DISPLAY_OLED_HELTEC:
+    OLED_loop();
+    break;
+#endif /* USE_OLED */
 
+  case DISPLAY_NONE:
+  default:
+    break;
+  }
 }
 
 static void SF32_Display_fini(int reason)
 {
+  switch (hw_info.display)
+  {
+#if defined(USE_OLED)
+  case DISPLAY_OLED_1_3:
+  case DISPLAY_OLED_TTGO:
+  case DISPLAY_OLED_HELTEC:
+    OLED_fini(reason);
+    break;
+#endif /* USE_OLED */
 
+  case DISPLAY_NONE:
+  default:
+    break;
+  }
 }
 
 static void SF32_Battery_setup()

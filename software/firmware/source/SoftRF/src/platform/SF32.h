@@ -80,12 +80,36 @@ struct rst_info {
   uint32_t depc;
 };
 
-#define SOC_GPIO_PIN_STATUS   SOC_UNUSED_PIN
+/* Peripherals */
+#define SOC_GPIO_PIN_CONS_RX  0  /* PA00 */
+#define SOC_GPIO_PIN_CONS_TX  1  /* PA01 */
+
+#define SOC_GPIO_PIN_GNSS_RX  2  /* PA02 */
+#define SOC_GPIO_PIN_GNSS_TX  3  /* PA03 */
+#define SOC_GPIO_PIN_GNSS_PPS 4  /* PA04 */
+
+/* SPI */
+#define SOC_GPIO_PIN_MOSI     14 /* PA24 */
+#define SOC_GPIO_PIN_MISO     15 /* PA25 */
+#define SOC_GPIO_PIN_SCK      17 /* PA28 */
+#define SOC_GPIO_PIN_SS       18 /* PA29 */
+
+/* SX1262 or LR2021 */
+#define SOC_GPIO_PIN_RST      5  /* PA05 */
+#define SOC_GPIO_PIN_DIO      6  /* PA06 */
+#define SOC_GPIO_PIN_BUSY     7  /* PA07 */
+
+/* I2C */
+#define SOC_GPIO_PIN_SDA      16 /* PA27 */
+#define SOC_GPIO_PIN_SCL      19 /* PA38 */
+
+#define SOC_GPIO_PIN_STATUS   13 /* PA26 */
 #define SOC_GPIO_LED_USBMSC   SOC_UNUSED_PIN
 #define SOC_GPIO_LED_BLE      SOC_UNUSED_PIN
 #define SOC_GPIO_PIN_GNSS_PPS SOC_UNUSED_PIN
-#define SOC_GPIO_PIN_BUTTON   SOC_UNUSED_PIN
-#define SOC_GPIO_PIN_LED      SOC_UNUSED_PIN
+#define SOC_GPIO_PIN_BUTTON   20 /* PA34 */
+#define SOC_GPIO_PIN_LED      22 /* PA32 */
+#define SOC_GPIO_PIN_BUZZER   9  /* PA09 */
 
 #define EXCLUDE_EEPROM
 #define EXCLUDE_WIFI
@@ -161,7 +185,6 @@ struct rst_info {
 #if defined(USE_PWM_SOUND)
 #define ALARM_TONE_HZ         2480 // seems to be the best value for 27 mm piezo buzzer
 #endif /* USE_PWM_SOUND */
-#define SOC_GPIO_PIN_BUZZER   SOC_UNUSED_PIN
 
 #if !defined(EXCLUDE_LED_RING)
 #include <Adafruit_NeoPixel.h>
