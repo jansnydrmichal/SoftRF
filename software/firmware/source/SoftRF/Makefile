@@ -410,11 +410,11 @@ hal.o: $(RADIO_PATH)/hal/hal.cpp
 hal-aux.o: $(RADIO_PATH)/hal/hal.cpp
 	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(RADIO_PATH)/hal/hal.cpp $(INCLUDE) -o hal-aux.o
 
-radiolib.o: $(DRIVER_PATH)/radio/radiolib.cpp
-	$(CXX) $(CXXFLAGS) -c $(DRIVER_PATH)/radio/radiolib.cpp $(INCLUDE) -o radiolib.o
+radiolib.o: $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp
+	$(CXX) $(CXXFLAGS) -c $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib.o
 
-radiolib-aux.o: $(DRIVER_PATH)/radio/radiolib.cpp
-	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(DRIVER_PATH)/radio/radiolib.cpp $(INCLUDE) -o radiolib-aux.o
+radiolib-aux.o: $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp
+	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib-aux.o
 
 RPi.o: $(PLATFORM_PATH)/RPi.cpp
 	$(CXX) $(CXXFLAGS) -c $(PLATFORM_PATH)/RPi.cpp $(INCLUDE) -o RPi.o
