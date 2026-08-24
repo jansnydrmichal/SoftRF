@@ -28,7 +28,7 @@
 #define DEFAULT_SOFTRF_MODEL    SOFTRF_MODEL_ACADEMY
 
 // #include <core_version.h>    // TODO
-#define ARDUINO_CORE_VERSION    "1.5.3"
+#define ARDUINO_CORE_VERSION    "1.6.0"
 
 #define isValidFix()            isValidGNSSFix()
 
