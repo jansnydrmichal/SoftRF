@@ -26,6 +26,8 @@
 
 #define DEFAULT_SOFTRF_MODEL    SOFTRF_MODEL_ACADEMY
 
+#define ARDUINO_CORE_VERSION    "0.1.6"
+
 #define isValidFix()            isValidGNSSFix()
 
 #define uni_begin()             strip.begin()

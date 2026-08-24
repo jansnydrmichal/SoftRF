@@ -53,7 +53,9 @@ enum
 #include "../platform/bluetooth/ArduinoBLE.h"
 #endif /* USE_ARDUINOBLE */
 #endif /* PI_PICO_W NANO_RP2040_CONNECT */
-#elif defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_SILABS)
+#elif defined(ARDUINO_ARCH_RENESAS) || \
+      defined(ARDUINO_ARCH_SILABS)  || \
+      defined(ARDUINO_ARCH_SF32LB52)
 #include "../platform/bluetooth/ArduinoBLE.h"
 #endif /* ESP32 or NRF52 or RP2040 or RENESAS or SILABS */
 

@@ -68,6 +68,7 @@ jobs:
       ARDUINO_IDE_VERSION: 1.8.13
       ARDUINO_CLI_VERSION: 0.34.2
       ARDUINO_BLE_VERSION: 1.4.1
+      ARDUINO_BLE_2G:      2.1.0
       ENERGIA_IDE_VERSION: 1.8.10E23
       NIM_BLE_VERSION:     2.5.1
       # NIM_BLE_VERSION:   master
@@ -581,6 +582,10 @@ jobs:
             arduino-cli config add board_manager.additional_urls https://github.com/OpenSiFli/ArduinoCore-zephyr/releases/latest/download/package_sifli_index.json ;
             arduino-cli core update-index ;
             arduino-cli core install sifli:sf32lb52@0.1.6 ;
+            wget https://github.com/arduino-libraries/ArduinoBLE/archive/refs/tags/${ARDUINO_BLE_2G}.tar.gz ;
+            tar xzf ${ARDUINO_BLE_2G}.tar.gz ;
+            rm ${ARDUINO_BLE_2G}.tar.gz ;
+            mv ArduinoBLE-${ARDUINO_BLE_2G} $HOME/Arduino/libraries/ ;
             cd $GITHUB_WORKSPACE ;
           fi
 

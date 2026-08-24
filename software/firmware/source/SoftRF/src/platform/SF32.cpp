@@ -444,7 +444,11 @@ const SoC_ops_t SF32_ops = {
   SF32_SPI_begin,
   SF32_swSer_begin,
   SF32_swSer_enableRx,
+#if !defined(EXCLUDE_BLUETOOTH)
+  &ArdBLE_Bluetooth_ops,
+#else
   NULL,
+#endif /* EXCLUDE_BLUETOOTH */
   &SF32_USBSerial_ops,
   NULL,
   SF32_Display_setup,

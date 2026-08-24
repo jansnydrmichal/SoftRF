@@ -18,8 +18,9 @@
 
 #include "../../system/SoC.h"
 
-#if !defined(EXCLUDE_BLUETOOTH) && (defined(ARDUINO_ARCH_RENESAS) || \
-     defined(ARDUINO_ARCH_SILABS) || defined(USE_ARDUINOBLE))
+#if !defined(EXCLUDE_BLUETOOTH) && (defined(ARDUINO_ARCH_RENESAS)   || \
+     defined(ARDUINO_ARCH_SILABS) || defined(ARDUINO_ARCH_SF32LB52) || \
+     defined(USE_ARDUINOBLE))
 
 #include <ArduinoBLE.h>
 
