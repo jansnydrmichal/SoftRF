@@ -1,5 +1,5 @@
 /*
- * radiolib_aux.cpp
+ * radiolib_extra.cpp
  * Copyright (C) 2024-2026 Linar Yusupov
  *
  * This program is free software: you can redistribute it and/or modify

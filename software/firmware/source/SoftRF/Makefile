@@ -410,11 +410,17 @@ hal.o: $(RADIO_PATH)/hal/hal.cpp
 hal-aux.o: $(RADIO_PATH)/hal/hal.cpp
 	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(RADIO_PATH)/hal/hal.cpp $(INCLUDE) -o hal-aux.o
 
-radiolib.o: $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp
-	$(CXX) $(CXXFLAGS) -c $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib.o
+radiolib.o: $(DRIVER_PATH)/radio/radiolib.cpp
+	$(CXX) $(CXXFLAGS) -c $(DRIVER_PATH)/radio/radiolib.cpp $(INCLUDE) -o radiolib.o
 
-radiolib-aux.o: $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp
-	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(DRIVER_PATH)/radio/radiolib.cpp $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib-aux.o
+radiolib_extra.o: $(DRIVER_PATH)/radio/radiolib_extra.cpp
+	$(CXX) $(CXXFLAGS) -c $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib_extra.o
+
+radiolib-aux.o: $(DRIVER_PATH)/radio/radiolib.cpp
+	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(DRIVER_PATH)/radio/radiolib.cpp $(INCLUDE) -o radiolib-aux.o
+
+radiolib_extra-aux.o: $(DRIVER_PATH)/radio/radiolib_extra.cpp
+	$(CXX) $(CXXFLAGS) -DUSE_SPI1 -c $(DRIVER_PATH)/radio/radiolib_extra.cpp $(INCLUDE) -o radiolib_extra-aux.o
 
 RPi.o: $(PLATFORM_PATH)/RPi.cpp
 	$(CXX) $(CXXFLAGS) -c $(PLATFORM_PATH)/RPi.cpp $(INCLUDE) -o RPi.o
@@ -441,11 +447,11 @@ ifeq ($(LGPIO), yes)
 	(cd $(LGPIO_PATH)/ ; make)
 endif
 
-$(PROGNAME): $(OBJS) aes.o hal.o radiolib.o RPi.o Lyra.o
-	$(CXX) $(OBJS) aes.o hal.o radiolib.o RPi.o Lyra.o $(LIBS) -o $(PROGNAME)
+$(PROGNAME): $(OBJS) aes.o hal.o radiolib.o radiolib_extra.o RPi.o Lyra.o
+	$(CXX) $(OBJS) aes.o hal.o radiolib.o radiolib_extra.o RPi.o Lyra.o $(LIBS) -o $(PROGNAME)
 
-$(PROGNAME)-aux: $(OBJS) aes.o hal-aux.o radiolib-aux.o RPi-aux.o
-	$(CXX) $(OBJS) aes.o hal-aux.o radiolib-aux.o RPi-aux.o $(LIBS) -o $(PROGNAME)-aux
+$(PROGNAME)-aux: $(OBJS) aes.o hal-aux.o radiolib-aux.o radiolib_extra-aux.o RPi-aux.o
+	$(CXX) $(OBJS) aes.o hal-aux.o radiolib-aux.o radiolib_extra-aux.o RPi-aux.o $(LIBS) -o $(PROGNAME)-aux
 
 bcm-clean:
 ifeq ($(BCM2835), yes)
@@ -459,4 +465,5 @@ endif
 
 clean: bcm-clean lgpio-clean
 	rm -f $(OBJS) $(DEPS) aes.o hal.o hal-aux.o radiolib.o radiolib-aux.o \
-	RPi.o RPi-aux.o Lyra.o $(PROGNAME) $(PROGNAME)-aux *.d
+	radiolib_extra.o radiolib_extra-aux.o RPi.o RPi-aux.o Lyra.o \
+	$(PROGNAME) $(PROGNAME)-aux *.d
