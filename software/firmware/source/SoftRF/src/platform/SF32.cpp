@@ -147,10 +147,14 @@ char *dtostrf_workaround(double number, signed char width, unsigned char prec, c
     return s;
 }
 
+#define WIN32
+#include "bf0_hal_efuse.h"
+static uint32_t SF32_uid = 0;
 
 static void SF32_setup()
 {
-
+  HAL_EFUSE_Init();
+  HAL_EFUSE_Read(0, (uint8_t *) &SF32_uid, 4);
 }
 
 static void SF32_post_init()
@@ -175,7 +179,13 @@ static void SF32_reset()
 
 static uint32_t SF32_getChipId()
 {
-  return 0;
+#if !defined(SOFTRF_ADDRESS)
+  uint32_t id = SF32_uid;
+
+  return DevID_Mapper(id);
+#else
+  return (SOFTRF_ADDRESS & 0xFFFFFFFFU );
+#endif
 }
 
 static void* SF32_getResetInfoPtr()

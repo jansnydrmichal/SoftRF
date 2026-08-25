@@ -104,9 +104,6 @@ struct rst_info {
 #define SOC_GPIO_PIN_SCL      19 /* PA38 */
 
 #define SOC_GPIO_PIN_STATUS   13 /* PA26 */
-#define SOC_GPIO_LED_USBMSC   SOC_UNUSED_PIN
-#define SOC_GPIO_LED_BLE      SOC_UNUSED_PIN
-#define SOC_GPIO_PIN_GNSS_PPS SOC_UNUSED_PIN
 #define SOC_GPIO_PIN_BUTTON   20 /* PA34 */
 #define SOC_GPIO_PIN_LED      22 /* PA32 */
 #define SOC_GPIO_PIN_BUZZER   9  /* PA09 */
