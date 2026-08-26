@@ -2928,9 +2928,8 @@ static void nRF52_fini(int reason)
       pinMode(SOC_GPIO_LED_TECHO_REV_2_RED,   INPUT_PULLUP);
       pinMode(SOC_GPIO_LED_TECHO_REV_2_BLUE,  INPUT_PULLUP);
 
-      if ((nRF52_board == NRF52_LILYGO_TECHO_PLUS ||
-           nRF52_board == NRF52_SEEED_X1)         &&
-           nRF52_has_vibra == true) {
+      if (nRF52_board == NRF52_LILYGO_TECHO_PLUS &&
+          nRF52_has_vibra == true) {
         vibra.stop();
 #if SENSORLIB_VERSION == SENSORLIB_VERSION_VAL(0, 3, 1)
         vibra.setMode(1<<6); /* Standby */
@@ -2939,9 +2938,7 @@ static void nRF52_fini(int reason)
         vibra.setMode(HapticMode::STANDBY);
 #endif /* (0, 4, 1) */
 
-        if (nRF52_board == NRF52_LILYGO_TECHO_PLUS) {
-          pinMode(SOC_GPIO_PIN_MOTOR_EN, INPUT);
-        }
+        pinMode(SOC_GPIO_PIN_MOTOR_EN, INPUT);
       }
 
       pinMode(SOC_GPIO_PIN_SFL_HOLD,  INPUT);
@@ -3131,13 +3128,21 @@ static void nRF52_fini(int reason)
       break;
 
     case NRF52_SEEED_X1:
+      if (nRF52_has_vibra == true) {
+        vibra.stop();
+#if SENSORLIB_VERSION == SENSORLIB_VERSION_VAL(0, 3, 1)
+        vibra.setMode(1<<6); /* Standby */
+#endif /* (0, 3, 1) */
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 1)
+        vibra.setMode(HapticMode::STANDBY);
+#endif /* (0, 4, 1) */
+      }
+
       pinMode(SOC_GPIO_PIN_GNSS_X1_RINT,    INPUT_PULLDOWN);
       pinMode(SOC_GPIO_PIN_GNSS_X1_SINT,    INPUT_PULLDOWN);
       pinMode(SOC_GPIO_PIN_GNSS_X1_RST,     INPUT_PULLDOWN);
       pinMode(SOC_GPIO_PIN_GNSS_X1_VRTC,    INPUT_PULLUP);
       pinMode(SOC_GPIO_PIN_GNSS_X1_EN,      INPUT_PULLDOWN);
-
-      pinMode(SOC_GPIO_PIN_X1_3V3_EN,       INPUT_PULLDOWN);
 
       pinMode(SOC_GPIO_PIN_X1_SS,           INPUT_PULLUP);
 
@@ -3154,6 +3159,8 @@ static void nRF52_fini(int reason)
       pinMode(SOC_GPIO_PIN_SFL_X1_EN,       INPUT);
       pinMode(SOC_GPIO_PIN_X1_HAPTIC_EN,    INPUT);
       pinMode(SOC_GPIO_PIN_X1_RTC_EN,       INPUT);
+
+      pinMode(SOC_GPIO_PIN_X1_3V3_EN,       INPUT_PULLDOWN);
       break;
 
     case NRF52_NORDIC_PCA10059:
