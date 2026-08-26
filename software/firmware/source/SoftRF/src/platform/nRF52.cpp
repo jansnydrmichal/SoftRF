@@ -2420,6 +2420,8 @@ static void nRF52_post_init()
       Serial.flush();
 #endif /* !MBED && !ZEPHYR */
     } else {
+      Serial.print(F("RTC     : "));
+      Serial.println(hw_info.rtc    == RTC_YSN8900       ? F("PASS") : F("FAIL"));
       Serial.print(F("BARO    : "));
       Serial.println(hw_info.baro   == BARO_MODULE_SPA06 ? F("PASS") : F("FAIL"));
       Serial.print(F("HAPTIC  : "));

@@ -147,14 +147,26 @@ char *dtostrf_workaround(double number, signed char width, unsigned char prec, c
     return s;
 }
 
+#if defined(WIN32)
+#include "bf0_hal_efuse.h"
+#else
 #define WIN32
 #include "bf0_hal_efuse.h"
-static uint32_t SF32_uid = 0;
+#undef WIN32
+#endif /* WIN32 */
+
+#define EFUSE_UID_OFFSET    0
+#define EFUSE_UID_SIZE      16
+
+static union {
+  uint8_t efuse_uid[EFUSE_UID_SIZE];
+  uint32_t SF32_uid[EFUSE_UID_SIZE / sizeof(uint32_t)];
+};
 
 static void SF32_setup()
 {
   HAL_EFUSE_Init();
-  HAL_EFUSE_Read(0, (uint8_t *) &SF32_uid, 4);
+  HAL_EFUSE_Read(EFUSE_UID_OFFSET, efuse_uid, EFUSE_UID_SIZE);
 }
 
 static void SF32_post_init()
@@ -174,13 +186,13 @@ static void SF32_fini(int reason)
 
 static void SF32_reset()
 {
-
+  NVIC_SystemReset();
 }
 
 static uint32_t SF32_getChipId()
 {
 #if !defined(SOFTRF_ADDRESS)
-  uint32_t id = SF32_uid;
+  uint32_t id = SF32_uid[0];
 
   return DevID_Mapper(id);
 #else
