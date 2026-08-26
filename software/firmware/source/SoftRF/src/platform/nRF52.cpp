@@ -1849,7 +1849,9 @@ static void nRF52_setup()
 
 #if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_ZEPHYR)
   if (nRF52_board == NRF52_SEEED_X1) {
-    if (nRF52_has_rtc) {
+    i2c = new I2CBus(Wire1);
+
+    if (nRF52_has_rtc && (i2c != nullptr)) {
 //    rtc_2 = new RTC_RX8900_U(&Wire1);
 //    if (rtc_2->begin())
       {
@@ -3188,12 +3190,79 @@ static void nRF52_fini(int reason)
   if (i2c != nullptr) Wire.end();
 #endif /* ARDUINO_ARCH_MBED */
 
-  if (nRF52_board == NRF52_HELTEC_T114) {
-    pinMode(SOC_GPIO_PIN_T114_SDA_EXT,  INPUT);
-    pinMode(SOC_GPIO_PIN_T114_SCL_EXT,  INPUT);
-  } else {
-    pinMode(SOC_GPIO_PIN_SDA,           INPUT);
-    pinMode(SOC_GPIO_PIN_SCL,           INPUT);
+  switch (nRF52_board)
+  {
+    case NRF52_HELTEC_T114:
+      pinMode(SOC_GPIO_PIN_T114_SDA_EXT, INPUT);
+      pinMode(SOC_GPIO_PIN_T114_SCL_EXT, INPUT);
+      break;
+
+#if !defined(EXCLUDE_WIP)
+    case NRF52_SEEED_WIO_L1:
+      pinMode(SOC_GPIO_PIN_L1_OLED_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_L1_OLED_SCL, INPUT);
+      break;
+
+    case NRF52_SEEED_T2000:
+      pinMode(SOC_GPIO_PIN_T2000_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_T2000_SCL, INPUT);
+      break;
+
+    case NRF52_HELTEC_T1:
+      pinMode(SOC_GPIO_PIN_T1_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_T1_SCL, INPUT);
+      break;
+
+    case NRF52_ELECROW_TN_M8:
+      pinMode(SOC_GPIO_PIN_M8_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_M8_SCL, INPUT);
+      break;
+#endif /* EXCLUDE_WIP */
+
+    case NRF52_SEEED_T1000E:
+      pinMode(SOC_GPIO_PIN_T1000_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_T1000_SCL, INPUT);
+      break;
+
+    case NRF52_ELECROW_TN_M3:
+      pinMode(SOC_GPIO_PIN_M3_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_M3_SCL, INPUT);
+      break;
+
+    case NRF52_ELECROW_TN_M6:
+      pinMode(SOC_GPIO_PIN_M6_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_M6_SCL, INPUT);
+      break;
+
+    case NRF52_LILYGO_TIMPULSE_PLUS:
+      pinMode(SOC_GPIO_PIN_TIP_OLED_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_TIP_OLED_SCL, INPUT);
+      pinMode(SOC_GPIO_PIN_TIP_SDA,      INPUT);
+      pinMode(SOC_GPIO_PIN_TIP_SCL,      INPUT);
+      break;
+
+    case NRF52_LILYGO_TECHO_CARD:
+      pinMode(SOC_GPIO_PIN_TEC_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_TEC_SCL, INPUT);
+      break;
+
+    case NRF52_SEEED_X1:
+      pinMode(SOC_GPIO_PIN_X1_SDA,     INPUT);
+      pinMode(SOC_GPIO_PIN_X1_SCL,     INPUT);
+      pinMode(SOC_GPIO_PIN_X1_RTC_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_X1_RTC_SCL, INPUT);
+      break;
+
+    case NRF52_LILYGO_TECHO_REV_0:
+    case NRF52_LILYGO_TECHO_REV_1:
+    case NRF52_LILYGO_TECHO_REV_2:
+    case NRF52_LILYGO_TECHO_PLUS:
+    case NRF52_ELECROW_TN_M1:
+    case NRF52_NORDIC_PCA10059:
+    default:
+      pinMode(SOC_GPIO_PIN_SDA, INPUT);
+      pinMode(SOC_GPIO_PIN_SCL, INPUT);
+      break;
   }
 
   // pinMode(SOC_GPIO_PIN_MOSI, INPUT);
