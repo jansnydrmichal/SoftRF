@@ -452,35 +452,35 @@ static float spa06_altitude(float sealevelPressure)
 
 static void spa06_setup()
 {
-    Serial.print(F("Temperature = "));
-    Serial.print(spa06.readTemperature());
-    Serial.println(F(" *C"));
+  Serial.print(F("Temperature = "));
+  Serial.print(spa06.readTemperature());
+  Serial.println(F(" *C"));
 
-    Serial.print(F("Pressure = "));
-    Serial.print(spa06.readPressure());
-    Serial.println(F(" hPa"));
+  Serial.print(F("Pressure = "));
+  Serial.print(spa06.readPressure());
+  Serial.println(F(" hPa"));
 
-    Serial.print(F("Approx altitude = "));
-    Serial.print(spa06_altitude(1013.25));
-    Serial.println(F(" m"));
+  Serial.print(F("Approx altitude = "));
+  Serial.print(spa06_altitude(1013.25));
+  Serial.println(F(" m"));
 
-    Serial.println();
-    delay(500);
+  Serial.println();
+  delay(500);
 }
 
 static void spa06_fini()
 {
-  /* TBD */
+  spa06.reset(); /* standby */
 }
 
 static float spa06_pressure()
 {
-    return spa06.readPressure() * 100;
+  return spa06.readPressure() * 100;
 }
 
 static float spa06_temperature()
 {
-    return spa06.readTemperature();
+  return spa06.readTemperature();
 }
 
 barochip_ops_t spa06_ops = {
