@@ -3323,13 +3323,16 @@ static void nRF52_fini(int reason)
       mode_button_pin = SOC_GPIO_PIN_TEC_BUTTON;
       break;
 
+    case NRF52_NORDIC_PCA10059:
+      mode_button_pin = SOC_GPIO_PIN_PCA10059_BUTTON;
+      break;
+
     case NRF52_LILYGO_TECHO_REV_0:
     case NRF52_LILYGO_TECHO_REV_1:
     case NRF52_LILYGO_TECHO_REV_2:
     case NRF52_LILYGO_TECHO_PLUS:
-    case NRF52_NORDIC_PCA10059:
     default:
-      mode_button_pin = SOC_GPIO_PIN_BUTTON;
+      mode_button_pin = SOC_GPIO_PIN_TECHO_REV_2_BUTTON;
       break;
   }
 
@@ -4768,7 +4771,7 @@ static void nRF52_WDT_fini()
 #include <AceButton.h>
 using namespace ace_button;
 
-AceButton button_1(SOC_GPIO_PIN_BUTTON);
+AceButton button_1(SOC_GPIO_PIN_TECHO_REV_2_BUTTON);
 AceButton button_2(SOC_GPIO_PIN_PAD);
 
 // The event handler for the button.
@@ -4911,14 +4914,17 @@ static void nRF52_Button_setup()
       mode_button_pin = SOC_GPIO_PIN_TEC_BUTTON;
       break;
 
+    case NRF52_NORDIC_PCA10059:
+      mode_button_pin = SOC_GPIO_PIN_PCA10059_BUTTON;
+      break;
+
     case NRF52_LILYGO_TECHO_REV_0:
     case NRF52_LILYGO_TECHO_REV_1:
     case NRF52_LILYGO_TECHO_REV_2:
     case NRF52_LILYGO_TECHO_PLUS:
-    case NRF52_NORDIC_PCA10059:
       up_button_pin   = SOC_GPIO_PIN_PAD;
     default:
-      mode_button_pin = SOC_GPIO_PIN_BUTTON;
+      mode_button_pin = SOC_GPIO_PIN_TECHO_REV_2_BUTTON;
       break;
   }
 
@@ -4985,7 +4991,7 @@ static void nRF52_Button_loop()
 
 static void nRF52_Button_fini()
 {
-//  detachInterrupt(digitalPinToInterrupt(SOC_GPIO_PIN_BUTTON));
+//  detachInterrupt(digitalPinToInterrupt(SOC_GPIO_PIN_TECHO_REV_2_BUTTON));
 
   switch (nRF52_board)
   {

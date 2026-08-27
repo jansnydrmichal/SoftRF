@@ -255,10 +255,6 @@ struct rst_info {
 /* buttons */
 #define SOC_GPIO_PIN_PCA10059_BUTTON    _PINNUM(1,  6) // P1.06
 
-#define SOC_GPIO_PIN_BUTTON   (nRF52_board == NRF52_NORDIC_PCA10059 ? \
-                               SOC_GPIO_PIN_PCA10059_BUTTON :         \
-                               SOC_GPIO_PIN_TECHO_REV_0_BUTTON)
-
 #define EXCLUDE_WIFI
 #define EXCLUDE_ETHERNET
 //#define EXCLUDE_OTA
