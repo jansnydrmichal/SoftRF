@@ -3268,20 +3268,9 @@ static void nRF52_fini(int reason)
   // pinMode(SOC_GPIO_PIN_MOSI, INPUT);
   // pinMode(SOC_GPIO_PIN_MISO, INPUT);
   // pinMode(SOC_GPIO_PIN_SCK,  INPUT);
-
-  /* TBD */
-  if (nRF52_board != NRF52_SEEED_T1000E         &&
-      nRF52_board != NRF52_SEEED_X1             &&
-      nRF52_board != NRF52_LILYGO_TECHO_CARD    &&
-      nRF52_board != NRF52_LILYGO_TIMPULSE_PLUS &&
-      nRF52_board != NRF52_ELECROW_TN_M3        &&
-      nRF52_board != NRF52_ELECROW_TN_M6        &&
-      nRF52_board != NRF52_ELECROW_TN_M8) {
-    pinMode(SOC_GPIO_PIN_SS, INPUT_PULLUP);
-  }
-
-  // pinMode(SOC_GPIO_PIN_BUSY, INPUT);
-  pinMode(lmic_pins.rst,  INPUT);
+  pinMode(lmic_pins.nss,        INPUT_PULLUP);
+  pinMode(lmic_pins.busy,       INPUT);
+  pinMode(lmic_pins.rst,        INPUT);
 
   int mode_button_pin;
 
