@@ -84,9 +84,11 @@ void loop()
     [SoftRF](https://github.com/lyusupov/SoftRF/tree/master/software/firmware/source/SoftRF) &nbsp;&nbsp;**-->** ``<My Documents>``/Arduino/SoftRF <br>
     [libraries](https://github.com/lyusupov/SoftRF/tree/master/software/firmware/source/libraries) **-->** ``<My Documents>``/Arduino/libraries <br>
 
-7. start **Arduino** application again
-8. open **SoftRF** sketch from _File_ -> _Open_ menu
-9. For **ESP32**:<br>
+7.  For **ESP32-S3**:<br>
+    [Install](https://github.com/h2zero/NimBLE-Arduino#arduino-installation) **specific version 1.4.3 of NimBLE library** from [this location](https://github.com/h2zero/NimBLE-Arduino/releases/tag/1.4.3)
+8. start **Arduino** application again
+9. open **SoftRF** sketch from _File_ -> _Open_ menu
+10. For **ESP32**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Board_ ->  _ESP32_ _Dev_ _Module_<br>
     For **ESP32-S2**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Board_ ->  _ESP32-S2_ _Dev_ _Module_<br>
@@ -100,8 +102,8 @@ void loop()
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Board_ ->  _ESP32-C6_ _Dev_ _Module_<br>
     For **ESP32-P4**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Board_ ->  _ESP32-P4_ _Dev_ _Module_<br>
-10. Select _Tools_ -> _Flash_ _Mode_ ->  _DIO_
-11. For **ESP32**:<br>
+11. Select _Tools_ -> _Flash_ _Mode_ ->  _DIO_
+12. For **ESP32**:<br>
     For **ESP32-S2**:<br>
     For **ESP32-S3**:<br>
     For **ESP32-C3**:<br>
@@ -111,7 +113,7 @@ void loop()
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Flash_ _Size_ ->  _8MB_<br>
     For **ESP32-P4**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Flash_ _Size_ ->  _16MB_<br>
-12. For **ESP32**:<br>
+13. For **ESP32**:<br>
     For **ESP32-S2**:<br>
     For **ESP32-S3**:<br>
     For **ESP32-C3**:<br>
@@ -120,7 +122,7 @@ void loop()
     For **ESP32-C6**:<br>
     For **ESP32-P4**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Partition_ _Scheme_ ->  _No_ _FS_ _4MB_ _(2MB_ _APP_ _x2)_<br>
-13. For **ESP32**:<br>
+14. For **ESP32**:<br>
     For **ESP32-S2**:<br>
     For **ESP32-S3**:<br>
     For **ESP32-C3**:<br>
@@ -129,7 +131,7 @@ void loop()
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Flash_ _Frequency_ ->  _80MHz_<br>
     For **ESP32-P4**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _Flash_ _Frequency_ ->  _40MHz_<br>
-14. For **ESP32**:<br>
+15. For **ESP32**:<br>
     For **ESP32-S2**:<br>
     For **ESP32-S3**:<br>
     For **ESP32-C3**:<br>
@@ -138,8 +140,8 @@ void loop()
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _CPU_ _Frequency_ ->  _80MHz_<br>
     For **ESP32-P4**:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select _Tools_ -> _CPU_ _Frequency_ ->  _40MHz_<br>
-15. Select _Tools_ -> _PSRAM_ ->  _Enabled_
-16. _Sketch_ -> _Upload_
+16. Select _Tools_ -> _PSRAM_ ->  _Enabled_
+17. _Sketch_ -> _Upload_
 
 <br>
 
