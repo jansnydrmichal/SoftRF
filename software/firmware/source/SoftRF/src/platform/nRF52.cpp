@@ -3146,6 +3146,8 @@ static void nRF52_fini(int reason)
       pinMode(SOC_GPIO_PIN_GNSS_X1_VRTC,    INPUT_PULLUP);
       pinMode(SOC_GPIO_PIN_GNSS_X1_EN,      INPUT_PULLDOWN);
 
+      pinMode(SOC_GPIO_PIN_X1_3V3_EN,       INPUT_PULLDOWN);
+
       pinMode(SOC_GPIO_PIN_X1_SS,           INPUT_PULLUP);
 
       pinMode(SOC_GPIO_PIN_X1_BUZZER,       INPUT_PULLDOWN);
@@ -3161,8 +3163,6 @@ static void nRF52_fini(int reason)
       pinMode(SOC_GPIO_PIN_SFL_X1_EN,       INPUT);
       pinMode(SOC_GPIO_PIN_X1_HAPTIC_EN,    INPUT);
       pinMode(SOC_GPIO_PIN_X1_RTC_EN,       INPUT);
-
-      pinMode(SOC_GPIO_PIN_X1_3V3_EN,       INPUT_PULLDOWN);
       break;
 
     case NRF52_NORDIC_PCA10059:
@@ -3269,7 +3269,7 @@ static void nRF52_fini(int reason)
   // pinMode(SOC_GPIO_PIN_MISO, INPUT);
   // pinMode(SOC_GPIO_PIN_SCK,  INPUT);
   pinMode(lmic_pins.nss,        INPUT_PULLUP);
-  pinMode(lmic_pins.busy,       INPUT);
+  // pinMode(lmic_pins.busy,       INPUT);
   pinMode(lmic_pins.rst,        INPUT);
 
   int mode_button_pin;

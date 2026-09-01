@@ -30,10 +30,15 @@
 #define SOC_GPIO_PIN_L2_I2S_DOUT    16
 #define SOC_GPIO_PIN_L2_I2S_DIN     15
 
+/* LED */
+#define SOC_GPIO_PIN_L2_LED         46 // active HIGH
+
 /* button */
 #define SOC_GPIO_PIN_L2_BUTTON_BOOT 0
 
 /* GPIO expansion (TCA9535) */
+#define SOC_GPIO_PIN_L2_INT         45
+
 #define SOC_EXPIO_L2_BUTTON         0
 #define SOC_EXPIO_L2_I2C_INT        1
 #define SOC_EXPIO_L2_SD_DET         2
@@ -44,9 +49,9 @@
 #define SOC_EXPIO_L2_GROVE_EN       7
 #define SOC_EXPIO_L2_TP_RST         8
 #define SOC_EXPIO_L2_GNSS_RST       9
-#define SOC_EXPIO_L2_GNSS_WKE       10
+#define SOC_EXPIO_L2_LED_USER       10
 #define SOC_EXPIO_L2_OTG_EN         11
 #define SOC_EXPIO_L2_PA_EN          12
 #define SOC_EXPIO_L2_GNSS_EN        13
-#define SOC_EXPIO_L2_TF_EN          14
+#define SOC_EXPIO_L2_SD_EN          14
 #define SOC_EXPIO_L2_BAT_EN         15
