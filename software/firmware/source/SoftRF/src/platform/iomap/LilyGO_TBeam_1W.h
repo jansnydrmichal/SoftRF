@@ -35,7 +35,7 @@
 #define SOC_GPIO_PIN_1W_SCL             9
 
 // 2nd button
-#define SOC_GPIO_PIN_1W_BUTTON_AUX      17
+#define SOC_GPIO_PIN_1W_BUTTON_2        17
 
 // LED
 #define SOC_GPIO_PIN_1W_LED             18

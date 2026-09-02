@@ -2577,7 +2577,7 @@ static void ESP32_setup()
     digitalWrite(SOC_GPIO_PIN_1W_FAN, HIGH);
     pinMode(SOC_GPIO_PIN_1W_FAN, OUTPUT);
 
-    pinMode(SOC_GPIO_PIN_1W_BUTTON_AUX, INPUT);
+    pinMode(SOC_GPIO_PIN_1W_BUTTON_2, INPUT);
 
   } else if (esp32_board == ESP32_HELTEC_TRACKER) {
 
@@ -7224,7 +7224,9 @@ void handleMainEvent(AceButton* button, uint8_t eventType,
       if (button == &button_1) {
         OLED_Next_Page();
       }
-      if (button == &button_2 && esp32_board == ESP32_ELECROW_TN_M2) {
+      if (button == &button_2 &&
+         (esp32_board == ESP32_ELECROW_TN_M2 ||
+          esp32_board == ESP32_TTGO_T_BEAM_1W)) {
         OLED_Up();
       }
 #endif /* USE_OLED */
@@ -7368,19 +7370,13 @@ static void ESP32_Button_setup()
     PageButtonConfig->setClickDelay(600);
     PageButtonConfig->setLongPressDelay(2000);
 
-    if (esp32_board == ESP32_ELECROW_TN_M2) {
-      int scroll_pin = SOC_GPIO_PIN_M2_BUTTON_2;
-
-      pinMode(scroll_pin, INPUT);
-      button_2.init(scroll_pin);
-
-      ButtonConfig* ScrollButtonConfig = button_2.getButtonConfig();
-      ScrollButtonConfig->setEventHandler(handleMainEvent);
-      ScrollButtonConfig->setFeature(ButtonConfig::kFeatureClick);
-      ScrollButtonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
-      ScrollButtonConfig->setClickDelay(600);
-    } else if (esp32_board == ESP32_ELECROW_TN_M5) {
-      int scroll_pin = SOC_GPIO_PIN_M5_BUTTON_2;
+    if (esp32_board == ESP32_ELECROW_TN_M2 ||
+        esp32_board == ESP32_ELECROW_TN_M5 ||
+        esp32_board == ESP32_TTGO_T_BEAM_1W) {
+      int scroll_pin = esp32_board == ESP32_ELECROW_TN_M2 ?
+                       SOC_GPIO_PIN_M2_BUTTON_2 :
+                       esp32_board == ESP32_ELECROW_TN_M5 ?
+                       SOC_GPIO_PIN_M5_BUTTON_2 : SOC_GPIO_PIN_1W_BUTTON_2;
 
       pinMode(scroll_pin, INPUT);
       button_2.init(scroll_pin);
@@ -7446,7 +7442,8 @@ static void ESP32_Button_loop()
     button_1.check();
 
     if (esp32_board == ESP32_ELECROW_TN_M2     ||
-        esp32_board == ESP32_ELECROW_TN_M5
+        esp32_board == ESP32_ELECROW_TN_M5     ||
+        esp32_board == ESP32_TTGO_T_BEAM_1W
 #if defined(USE_SA8X8)
         ||
         esp32_board == ESP32_LILYGO_T_TWR2
