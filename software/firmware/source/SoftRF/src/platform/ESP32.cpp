@@ -2579,6 +2579,12 @@ static void ESP32_setup()
 
     pinMode(SOC_GPIO_PIN_1W_BUTTON_2, INPUT);
 
+    /* enforce discharge of C15 and C16 capacitors when battery is NC */
+    pinMode(SOC_GPIO_PIN_1W_BATTERY, OUTPUT);
+    digitalWrite(SOC_GPIO_PIN_1W_BATTERY, LOW);
+    delay(300);
+    pinMode(SOC_GPIO_PIN_1W_BATTERY, INPUT);
+
   } else if (esp32_board == ESP32_HELTEC_TRACKER) {
 
     rtc_clk_32k_enable(true);
