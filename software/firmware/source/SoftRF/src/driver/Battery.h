@@ -21,7 +21,8 @@
 
 #define isTimeToBattery()         (millis() - Battery_TimeMarker > 5000)
 
-#define BATTERY_THRESHOLD_INVALID 1.8
+#define BATTERY_THRESHOLD_INVALID (hw_info.model == SOFTRF_MODEL_PRIME_MK4 ? \
+                                  3.6 : 1.8)
 
 #define BATTERY_THRESHOLD_NIMHX2  2.3
 #define BATTERY_THRESHOLD_LIPO    3.5
