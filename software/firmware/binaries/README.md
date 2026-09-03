@@ -388,6 +388,13 @@ The Bootloader is capable to self-program an application firmware into the devic
 
 <img src="https://github.com/lyusupov/SoftRF/raw/master/documents/images/ham-1.jpg" width="400">
 
+&nbsp;&nbsp;&nbsp;&nbsp; For **T-Beam 1W**:
+
+<img width="400" src="https://github.com/user-attachments/assets/6a6f0129-4d42-463a-bcb5-e2c0c876a4d6" />
+
+<br>
+<br>
+
 &nbsp;&nbsp;&nbsp;&nbsp; This white LED on the **Heltec Tracker** will start to flicker:
 
 <img src="https://github.com/lyusupov/SoftRF/raw/master/documents/images/midi-2.jpg" width="400">
@@ -397,6 +404,7 @@ The Bootloader is capable to self-program an application firmware into the devic
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A virtual disk with a device specific label should appear in your "File manager" afterwards.<br>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For **T-Beam Supreme** the label is &nbsp; **TBEAMBOOT**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For **T-Beam 1W** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **TBEAMBOOT**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For **T-TWR Plus** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **TWRBOOT**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For **Heltec Tracker** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **HTBOOT**<br>
 
